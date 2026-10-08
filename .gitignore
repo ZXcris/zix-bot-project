@@ -1,0 +1,84 @@
+# Secretos y configuración local
+.env
+.env.*
+!.env.example
+local.properties
+
+# Credenciales y claves
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+
+# Tests
+.pytest_cache/
+
+# Logs de corridas y verificación (evidencia local, no versionar)
+*.log
+
+# Modelos: ninguno viaja con el repo.
+#
+# - Los de Piper (es_MX-*) se regeneran con scripts/setup_voice_models.py.
+# - zix.onnx NO se versiona por dos razones, ambas decididas el 2026-10-03:
+#   1) Licencia: se entreno con RIRs (MIT), AudioSet (CC-BY 4.0) y FMA
+#      (CC-BY-NC, NO comercial). Publicarlo arrastra esa restriccion.
+#   2) Calidad: con el modelo actual ZIX acierta 4/27 (15%) sobre voz humana
+#      real. Es inservible; solo reacciona al clip de entrenamiento.
+#   Se regenera reentrenando en Colab (celda 4b de train_hey_zix.ipynb).
+models/
+!models/.gitkeep
+
+# Grabaciones temporales de voz
+runtime/
+data/wakeword_real/*.wav
+data/wakeword_real_16k/
+
+# Herramientas y artefactos locales (no versionar)
+.obsidian/
+.playwright-mcp/
+zix bot/
+
+# graphify-out/ NO se versiona (decision del 2026-10-03).
+# Es un artefacto generado de 3,3 MB (era el 73% del repo) y ademas lleva
+# rutas absolutas del sistema dentro, que se regeneran en cada corrida.
+# Se reconstruye local cuando se necesita:
+#     graphify extract <ruta> --code-only --out <ruta>
+#     graphify update .
+graphify-out/
+
+# ─────────────────────────────────────────────────────────────────────
+# Material personal o local que NO debe publicarse aunque este en el disco.
+# Ignorar no es borrar: los ficheros siguen ahi.
+# ─────────────────────────────────────────────────────────────────────
+
+# Vault de Obsidian (notas personales, wiki, historial de sesiones)
+Paginas/
+index.md
+log.md
+SCHEMA.md
+.obsidian/
+
+# Capturas y salidas sueltas de pruebas manuales
+*.png
+!apps/zix-ui/**/*.png
+!docs/**/*.png
+
+# Artefactos de consola heredados
+query
+stop
+
+# Nota: zix bot/ sigue ignorado por el nombre con espacio (regla existente).
+
+# Salidas de herramientas de analisis
+.playwright-mcp/
+.claude/
+.codex/
+.mcp/
+*.har

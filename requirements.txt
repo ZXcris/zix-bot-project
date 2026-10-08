@@ -1,0 +1,7 @@
+groq
+python-dotenv
+openwakeword
+sounddevice
+numpy
+piper-tts
+pytest

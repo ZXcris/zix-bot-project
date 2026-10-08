@@ -1,0 +1,17 @@
+# Dependencias de desarrollo. El runtime va en pyproject.toml.
+#
+# Se instala con:  pip install -e ".[dev]"
+# Este fichero existe para entornos sin soporte de extras (py3.10 en Colab).
+
+# Suite de pruebas
+pytest>=9.0
+
+# Reescritura de historial (solo si hay que purgar un secreto del repositorio)
+git-filter-repo>=2.47
+
+# Auditoria de dependencias (opcional; el inventario del 2026-10-03 se hizo
+# contra la API de OSV sin instalar nada)
+pip-audit>=2.7
+
+# Solo para ZX Ops (tests de opencode_adapter); no hace falta para el runtime
+playwright>=1.40

@@ -1,0 +1,29 @@
+# Normalizacion de fin de linea: LF en el repo, CRLF al trabajar en Windows.
+* text=auto eol=lf
+
+# Windows: CRLF en el arbol de trabajo
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binarios: nunca tocar
+*.onnx binary
+*.onnx.data binary
+*.wav binary
+*.png binary
+*.pdf binary
+*.tflite binary
+*.npy binary
+
+# Modelos de lenguaje y datos grandes
+models/** binary
+graphify-out/** binary
+runtime/** binary
+
+# Documentacion: LF siempre
+*.md text eol=lf
+LICENSE text eol=lf
+
+# Bloquear diffs Huge
+graphify-out/graph.json -diff
+graphify-out/cache/** -diff
