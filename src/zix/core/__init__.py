@@ -1,0 +1,1 @@
+"""Núcleo del agente de ZIX. No depende de ningún proveedor concreto."""
