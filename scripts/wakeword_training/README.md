@@ -1,0 +1,138 @@
+# Entrenamiento del wake word "Hey ZIX" (openWakeWord)
+
+Objetivo: entrenar un modelo de wake word propio para **"Hey ZIX"** con el
+pipeline **oficial de openWakeWord**, y obtener **`zix.onnx`** para ZIX.
+
+> `hey_jarvis_v0.1.onnx` **no se reemplaza**: queda como respaldo mientras tanto.
+
+## Procedimiento (Colab)
+
+1. Abre <https://colab.research.google.com> y sube el notebook
+   `scripts/wakeword_training/train_hey_zix.ipynb`
+   (Archivo → Subir notebook).
+2. **Runtime → Cambiar tipo de entorno → GPU T4** (el entrenamiento es mucho
+   más rápido; sin GPU, multiplica los tiempos).
+3. Ejecuta las celdas **en orden** (Runtime → Ejecutar todo o celda a celda):
+
+   | Celda | Qué hace | Tiempo aprox. |
+   |---|---|---|
+   | 1. Instalación del entorno | Clona piper-sample-generator + openWakeWord e instala dependencias | ~10 min |
+   | 2. Descarga de datos | RIRs MIT, AudioSet (1 tar) + FMA (1 h), features negativos (~2 GB) | ~20-30 min |
+   | 3. Configuración | Escribe `my_model.yaml` con frase **"hey zix"** y `model_name: zix` | instantáneo |
+   | 4. Generar clips | Sintetiza ~5000 muestras de "Hey ZIX" + adversariales con Piper TTS | ~30-45 min |
+   | 4b. Audios reales (opcional) | Mezcla tus WAV 16k mono en `zix_model/positive/` (ver `data/wakeword_real/README.md` + `prepare_real_clips.py`) | ~5 min |
+   | 5. Aumentar clips | Mezcla con ruido/reverberación | ~10 min |
+   | 6. Entrenar | Entrena la DNN y exporta `zix.onnx` (+ `zix.tflite`) | ~30-60 min |
+   | 7. Verificar | Carga `zix.onnx` y compara scores positivos vs. negativos | instantáneo |
+   | 8. Descargar | `files.download("zix_model/zix.onnx")` → lo guardas en tu PC | instantáneo |
+
+4. Si algo falla a mitad de la generación, **vuelve a ejecutar esa celda**:
+   `train.py` continúa donde quedó (no se regenera lo ya hecho).
+5. Si la instalación de dependencias fallara en el Colab actual (pins de
+   2023), prueba otro runtime de Python (3.10) o el notebook comunitario
+   `alfiedennen/openwakeword-colab-2026` (versiones compatibles con 2026),
+   que produce el mismo `.onnx`.
+
+## Archivos que se generan
+
+| Archivo (en Colab) | ¿Se necesita en ZIX? | Dónde va |
+|---|---|---|
+| `zix_model/zix.onnx` | **Sí — es el único necesario** | `models/wakeword/zix.onnx` |
+| `zix_model/zix.tflite` | No (ZIX usa ONNX) | — |
+| `zix_model/positive/`, `negative/`, features, checkpoints, logs | No (subproductos del entrenamiento) | — |
+
+### ¿Necesita archivos auxiliares junto al `.onnx`? **No.**
+
+openWakeWord usa dos *feature models* compartidos para TODOS los wake words:
+`melspectrogram.onnx` (1.1 MB) y `embedding_model.onnx` (1.3 MB, Apache-2.0).
+**Ya están instalados en tu PC** con el paquete `openwakeword`
+(`.venv\Lib\site-packages\openwakeword\resources\models\`). No hay metadatos
+por modelo: el `.onnx` es autocontenido (entrada = embeddings de 96 dims,
+salida = score).
+
+## Compatibilidad con `OpenWakeWordProvider` — confirmada
+
+- Acepta **rutas de archivo `.onnx`** (`_resolve_spec`): con
+  `WAKE_WORD_MODEL=zix` buscará `models/wakeword/zix.onnx` y la clave del
+  resultado será `zix` (el stem del archivo).
+- `Model(wakeword_models=[ruta], inference_framework="onnx")` es exactamente
+  lo que el provider ya usa con `hey_jarvis` — misma API.
+- Audio: 16 kHz mono int16 (nuestro `AudioManager` ya entrega eso).
+- Umbral configurable: `WAKE_WORD_THRESHOLD` (default 0.5); tras probar con
+  micrófono real se puede calibrar.
+
+## Herramientas locales (nuevas, 2026-10-03)
+
+El ciclo de reentrenamiento se hacia a mano y la verificación era engañosa.
+Estas dos herramientas lo automatizan:
+
+### 1. Grabar clips reales — `grabar_clips.py`
+
+```
+.venv\Scripts\python.exe scripts\wakeword_training\grabar_clips.py
+```
+
+Modo guiado: te dice qué condición falta (`lugar / distancia / fondo`), pulsas
+Enter, dices "Hey ZIX" y el clip se guarda ya normalizado a 16 kHz mono 16-bit
+con el nombre del protocolo (`heyzix_<persona>_<lugar>-<dist>-<fondo>_<nn>.wav`).
+
+Rechaza el toma en el momento, sin guardar nada, si la duración está fuera de
+rango, el nivel es bajo o saturante, hay clipping, o **Silero no detecta habla**
+(`openwakeword` ya trae el VAD; el script lo usa). `q` para salir.
+
+Matriz por defecto: 9 condiciones × 3 tomas = 27 clips, priorizando variedad
+(3 lugares, 3 distancias, 3 fondos) sobre cantidad.
+
+### 2. Verificar sobre clips retenidos — `verify_heldout.py`
+
+```
+.venv\Scripts\python.exe scripts\wakeword_training\verify_heldout.py data\wakeword_real_16k ^
+    --negativos runtime\wakeword_wasapi.wav --negativos runtime\wakeword_test.wav
+```
+
+Puntúa el modelo con el mismo `OpenWakeWordProvider` que usa producción y da:
+
+- score máximo por clip, y cuántos disparan sobre el umbral;
+- falsos positivos sobre los negativos;
+- **umbral recomendado**: el punto medio entre el positivo más bajo y el
+  negativo más alto, que es el corte con más margen;
+- veredicto `NO LISTO` si el modelo no separa tus clips de los negativos.
+
+**Se niega a correr si la carpeta parece de entrenamiento**
+(`zix_model`, `positive/train`). La celda 7 del notebook puntuaba
+`positive/train/*.wav` y por eso el 0.8834 no significaba nada: era
+memorización. Este script existe para que eso no vuelva a pasar.
+
+## Antes de subir a Colab
+
+```
+.venv\Scripts\python.exe scripts\wakeword_training\prepare_real_clips.py data\wakeword_real --out data\wakeword_real_16k
+.venv\Scripts\python.exe scripts\wakeword_training\verify_heldout.py data\wakeword_real_16k --negativos <tuivos>
+```
+
+## Integración en ZIX (solo tras tu aprobación)
+
+1. Copia `zix.onnx` a `models/wakeword/zix.onnx`.
+2. En `.env`:
+   ```
+   WAKE_WORD_MODEL=zix
+   # WAKE_WORD_THRESHOLD=0.5   (calibrar tras pruebas reales)
+   ```
+3. Verifica con `python scripts/integration_test_voice.py` (cargará `zix` y
+   procesará silencio) y luego con micrófono real
+   (`python -m zix.voice_main`) diciendo **"Hey ZIX"**.
+4. Para volver al respaldo: `WAKE_WORD_MODEL=hey_jarvis`.
+
+## Resultado esperado
+
+```
+"Hey ZIX" → wake word detectado → ZIX escucha → procesa el comando
+          → responde por voz → vuelve a esperar "Hey ZIX"
+```
+
+## Referencias
+
+- Pipeline oficial: `dscripka/openWakeWord` → `notebooks/automatic_model_training.ipynb`
+- Config de ejemplo: `dscripka/openWakeWord` → `examples/custom_model.yml`
+- Features compartidos: `davidscripka/openwakeword_features` (HuggingFace)
+- Comunidad (fallback 2026): `alfiedennen/openwakeword-colab-2026`
