@@ -1,0 +1,1794 @@
+<!doctype html>
+<html lang="es"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- CSP: pagina estatica sin backend. connect-src 'none' garantiza que no
+       pueda salir nada a la red. Sin frame-ancestors porque los navegadores
+       lo ignoran dentro de un meta. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <title>ZIX IA — Asistente de Voz</title>
+  <style>
+    :root {
+      --bg:      #ffffff;
+      --surface: #f8f9fa;
+      --fg:      #1a1a2e;
+      --muted:   #6b7280;
+      --border:  #e5e7eb;
+      --accent:  #2563eb;
+
+      --accent-soft: color-mix(in oklch, var(--accent) 12%, transparent);
+      --fg-soft:     color-mix(in oklch, var(--fg) 5%, transparent);
+
+      --font-display: 'Charter', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+      --font-body:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --font-mono:    ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+      --fs-h1:   clamp(36px, 5vw, 48px);
+      --fs-h2:   clamp(24px, 3vw, 32px);
+      --fs-h3:   18px;
+      --fs-lead: 16px;
+      --fs-body: 15px;
+      --fs-meta: 13px;
+
+      --gap-xs: 8px;
+      --gap-sm: 12px;
+      --gap-md: 20px;
+      --gap-lg: 32px;
+      --gap-xl: 56px;
+
+      --radius:    10px;
+      --radius-lg: 16px;
+
+      --glass-bg: color-mix(in oklch, var(--bg) 70%, transparent);
+      --glass-border: color-mix(in oklch, var(--border) 50%, transparent);
+      --glass-shadow: 0 8px 32px color-mix(in oklch, var(--fg) 8%, transparent),
+                      inset 0 1px 0 color-mix(in oklch, var(--bg) 80%, transparent);
+
+      --bg-warm:     #fafaf9;
+      --success:     #22c55e;
+      --warning:     #f59e0b;
+      --error:       #ef4444;
+      --accent-deep: #1d4ed8;
+      --accent-light:#60a5fa;
+    }
+
+    /* ─── Dark theme ─────────────────────────────────────────── */
+    [data-theme="dark"] {
+      --bg:      #0f0f13;
+      --surface: #17171d;
+      --fg:      #eef0f4;
+      --muted:   #a1a7b3;
+      --border:  #26262e;
+      --accent:  #60a5fa;
+
+      --bg-warm: #0f0f13;
+
+      --accent-soft: color-mix(in oklch, var(--accent) 18%, transparent);
+      --fg-soft:     color-mix(in oklch, var(--fg) 8%, transparent);
+
+      --glass-shadow: 0 8px 32px color-mix(in oklch, #000000 40%, transparent),
+                      inset 0 1px 0 color-mix(in oklch, var(--bg) 12%, transparent);
+    }
+
+    [data-theme="dark"] .liquid-btn-primary {
+      color: #0a0f1e;
+    }
+
+    /* Transición suave de tema (clase temporal al cambiar) */
+    html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after {
+      transition: background-color 0.45s ease, border-color 0.45s ease, color 0.45s ease, box-shadow 0.45s ease !important;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      background: var(--bg-warm);
+      color: var(--fg);
+      font-family: var(--font-body);
+      font-size: var(--fs-body);
+      line-height: 1.55;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      overflow: hidden;
+      opacity: 0;
+    }
+
+    /* Transición limpia entre pantallas (entrada + salida) */
+    body.page-in {
+      opacity: 1;
+      transition: opacity 0.35s ease;
+    }
+
+    body.page-out {
+      opacity: 0;
+      transition: opacity 0.22s ease;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body { opacity: 1; }
+      body.page-in, body.page-out { transition: none; }
+    }
+
+    /* ─── Ambient background ────────────────────────────────── */
+    .ambient-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 55% 50% at 50% 45%, color-mix(in oklch, var(--accent) 5%, transparent), transparent 70%);
+    }
+
+    /* ─── Aurora v2 (patrón Aurora Background): velos de deriva lenta */
+    .aurora {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(90px);
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.55;
+    }
+
+    .aurora-a {
+      width: 55vmax;
+      height: 55vmax;
+      left: -12vmax;
+      top: -14vmax;
+      background: radial-gradient(circle, color-mix(in oklch, var(--accent) 6%, transparent), transparent 70%);
+      animation: aurora-drift-a 26s ease-in-out infinite alternate;
+    }
+
+    .aurora-b {
+      width: 48vmax;
+      height: 48vmax;
+      right: -10vmax;
+      bottom: -12vmax;
+      background: radial-gradient(circle, color-mix(in oklch, var(--accent-light) 5%, transparent), transparent 70%);
+      animation: aurora-drift-b 32s ease-in-out infinite alternate;
+    }
+
+    @keyframes aurora-drift-a {
+      from { transform: translate(0, 0) scale(1); }
+      to { transform: translate(9vmax, 7vmax) scale(1.12); }
+    }
+
+    @keyframes aurora-drift-b {
+      from { transform: translate(0, 0) scale(1.08); }
+      to { transform: translate(-8vmax, -6vmax) scale(1); }
+    }
+
+    /* ─── Particle Field ──────────────────────────────────── */
+    #particle-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      display: block;
+      pointer-events: none;
+    }
+
+    .particle-halo {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: radial-gradient(ellipse 50% 45% at 50% 48%, color-mix(in oklch, var(--accent) 5%, transparent), transparent 60%);
+      transition: background 1s ease, opacity 1s ease;
+      animation: halo-breathe 7s ease-in-out infinite;
+    }
+
+    @keyframes halo-breathe {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 0.85; }
+    }
+
+    .particle-halo.listening {
+      background: radial-gradient(ellipse 50% 45% at 50% 48%, color-mix(in oklch, var(--accent) 9%, transparent), transparent 55%);
+    }
+
+    .particle-halo.processing {
+      background: radial-gradient(ellipse 50% 45% at 50% 48%, color-mix(in oklch, var(--accent-deep) 10%, transparent), transparent 55%);
+    }
+
+    .particle-halo.speaking {
+      background: radial-gradient(ellipse 50% 45% at 50% 48%, color-mix(in oklch, var(--accent-light) 11%, transparent), transparent 55%);
+    }
+
+    .particle-halo.error {
+      background: radial-gradient(ellipse 50% 45% at 50% 48%, color-mix(in oklch, var(--error) 8%, transparent), transparent 55%);
+    }
+
+    /* ─── Layout ─────────────────────────────────────────────── */
+    .app {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      height: 100vh;
+    }
+
+    /* ─── Sidebar ────────────────────────────────────────────── */
+    .sidebar {
+      width: 280px;
+      background:
+        linear-gradient(
+          165deg,
+          color-mix(in oklch, var(--surface) 78%, transparent) 0%,
+          color-mix(in oklch, var(--surface) 62%, transparent) 55%,
+          color-mix(in oklch, var(--surface) 70%, transparent) 100%
+        );
+      backdrop-filter: blur(32px) saturate(1.45);
+      -webkit-backdrop-filter: blur(32px) saturate(1.45);
+      border-right: 1px solid color-mix(in oklch, var(--border) 55%, transparent);
+      box-shadow:
+        var(--glass-shadow),
+        inset -1px 0 0 color-mix(in oklch, var(--bg) 65%, transparent);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, visibility 0.35s;
+      z-index: 10;
+    }
+
+    .sidebar.collapsed {
+      margin-left: -280px;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .sidebar-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .sidebar-brand {
+      font-family: var(--font-display);
+      font-size: var(--fs-h3);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .sidebar-version {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      margin-left: auto;
+    }
+
+    .sidebar-section {
+      padding: 12px;
+    }
+
+    .sidebar-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      padding: 8px 8px 4px;
+    }
+
+    .chat-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .chat-item {
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--fg);
+    }
+
+    .chat-item:hover {
+      background: var(--fg-soft);
+    }
+
+    .chat-item.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .chat-item-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    .chat-item.active .chat-item-dot {
+      background: var(--accent);
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .sidebar-footer .liquid-btn {
+      width: 100%;
+    }
+
+    /* ─── Settings Panel ─────────────────────────────────────── */
+    .settings-overlay {
+      position: fixed;
+      inset: 0;
+      background: color-mix(in oklch, var(--fg) 20%, transparent);
+      z-index: 100;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .settings-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .settings-panel {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 320px;
+      height: 100vh;
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      z-index: 101;
+      transform: translateX(-100%);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 4px 0 24px color-mix(in oklch, var(--fg) 8%, transparent);
+    }
+
+    .settings-panel.open {
+      transform: translateX(0);
+    }
+
+    .settings-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .settings-title {
+      font-family: var(--font-display);
+      font-size: var(--fs-h3);
+      font-weight: 600;
+    }
+
+    .settings-close {
+      margin-left: auto;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      color: var(--muted);
+      transition: color 0.15s ease;
+    }
+
+    .settings-close:hover {
+      color: var(--fg);
+    }
+
+    .settings-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .settings-group {
+      margin-bottom: 24px;
+    }
+
+    .settings-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .settings-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .settings-card-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+    }
+
+    .settings-card-row + .settings-card-row {
+      border-top: 1px solid var(--border);
+    }
+
+    .settings-card-label {
+      font-size: 14px;
+      color: var(--fg);
+    }
+
+    .settings-card-value {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .settings-card-value.is-active {
+      color: var(--success);
+    }
+
+    .provider-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: var(--accent-soft);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--accent);
+    }
+
+    .provider-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+
+    /* ─── Theme row + segmented (Claro / Oscuro / Sistema) ─── */
+    .theme-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+    }
+
+    .theme-segmented {
+      display: inline-flex;
+      padding: 3px;
+      gap: 2px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0;
+    }
+
+    .theme-seg {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .theme-seg:hover {
+      color: var(--fg);
+    }
+
+    .theme-seg:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .theme-seg[aria-checked="true"] {
+      background: var(--accent-soft);
+      color: var(--fg);
+    }
+
+    /* ─── Usage Ring ─────────────────────────────────────────── */
+    .usage-ring-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .usage-ring {
+      width: 64px;
+      height: 64px;
+      position: relative;
+    }
+
+    .usage-ring svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .usage-ring-track {
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 4;
+    }
+
+    .usage-ring-fill {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-dasharray: 163.36;
+      stroke-dashoffset: 48.99;
+      transition: stroke-dashoffset 0.6s ease;
+    }
+
+    /* Sin dato de uso real: el anillo queda en gris, igual que la pista,
+       y el guion del centro no usa el color de acento. */
+    .usage-ring.is-empty .usage-ring-fill {
+      stroke: var(--border);
+      stroke-dashoffset: 163.36;
+    }
+    .usage-ring.is-empty .usage-ring-text { color: var(--muted); }
+
+    .usage-ring-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .usage-info {
+      flex: 1;
+    }
+
+    .usage-title {
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    .usage-detail {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ─── Main Content ───────────────────────────────────────── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      min-width: 0;
+    }
+
+    .main-topbar {
+      position: relative;
+      width: 100%;
+      padding: 20px 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 5;
+    }
+
+    .menu-btn {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      color: var(--fg);
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+      box-shadow: var(--glass-shadow);
+    }
+
+    .menu-btn:hover {
+      background: color-mix(in oklch, var(--bg) 80%, transparent);
+      border-color: var(--muted);
+    }
+
+    .menu-btn:active {
+      transform: scale(0.96);
+    }
+
+    .menu-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .menu-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    a.menu-btn {
+      text-decoration: none;
+    }
+
+    .topbar-brand {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      user-select: none;
+    }
+
+    /* ─── Model chip (ver y cambiar el modelo activo) ─────────── */
+    .model-chip {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      min-height: 44px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 999px;
+      box-shadow: var(--glass-shadow);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--fg);
+      cursor: pointer;
+      transition: border-color 0.15s ease;
+    }
+
+    .model-chip:hover {
+      border-color: var(--muted);
+    }
+
+    .model-chip:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .model-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      flex-shrink: 0;
+    }
+
+    /* ─── Model select (solo modelos configurados) ────────────── */
+    .model-list {
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .model-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .model-option:hover {
+      background: var(--fg-soft);
+    }
+
+    .model-option.selected {
+      border-color: color-mix(in oklch, var(--accent) 40%, transparent);
+      background: var(--accent-soft);
+    }
+
+    .model-option input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .model-radio {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      position: relative;
+      transition: border-color 0.15s ease;
+    }
+
+    .model-option.selected .model-radio {
+      border-color: var(--accent);
+    }
+
+    .model-option.selected .model-radio::after {
+      content: '';
+      position: absolute;
+      inset: 3px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .model-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .model-name {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .model-provider {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .model-state {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .model-state.is-active {
+      color: var(--success);
+    }
+
+    .settings-note {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--muted);
+      margin: 8px 2px 0;
+    }
+
+    /* ─── Estado vacío ──────────────────────────────────────────────
+       Copiado tal cual de zix-home-tarjeta.html para que Chat y Home
+       compartan exactamente el mismo componente. */
+    .empty {
+      padding: 20px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 14px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* Si la tarjeta solo envuelve un estado vacío, el marco lo aporta .empty:
+       así no queda un borde dentro de otro borde. */
+    .settings-card:has(> .empty) {
+      background: none;
+      border: 0;
+      padding: 0;
+    }
+
+    /* ─── Sidebar model facts ──────────────────────────────────── */
+    .model-facts {
+      margin-top: 12px;
+    }
+
+    .model-desc {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--muted);
+      margin: 0 2px 6px;
+    }
+
+    .model-fact {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 7px 2px;
+      font-size: 13px;
+      color: var(--fg);
+    }
+
+    .model-fact strong {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .power-meter {
+      display: inline-flex;
+      gap: 4px;
+    }
+
+    .power-meter i {
+      width: 16px;
+      height: 5px;
+      border-radius: 3px;
+      background: var(--accent);
+    }
+
+    /* ─── Bottom Controls ────────────────────────────────────── */
+    .bottom-controls {
+      position: relative;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding-bottom: 44px;
+      z-index: 5;
+    }
+
+    /* ─── Status Badge ───────────────────────────────────────── */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 16px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 999px;
+      box-shadow: var(--glass-shadow);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--fg);
+      transition: border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.4s ease;
+      flex-shrink: 0;
+    }
+
+    .status-badge.connected .status-dot  { background: var(--success); }
+    .status-badge.listening .status-dot  { background: var(--accent); animation: status-pulse 1.2s ease-in-out infinite; }
+    .status-badge.processing .status-dot { background: var(--warning); animation: status-pulse 0.9s ease-in-out infinite; }
+    .status-badge.error .status-dot      { background: var(--error); }
+    .status-badge.speaking .status-dot   { background: var(--accent-light); animation: status-pulse 0.8s ease-in-out infinite; }
+
+    .status-badge.listening  { border-color: color-mix(in oklch, var(--accent) 25%, transparent); }
+    .status-badge.processing { border-color: color-mix(in oklch, var(--warning) 20%, transparent); }
+    .status-badge.speaking   { border-color: color-mix(in oklch, var(--accent-light) 20%, transparent); }
+    .status-badge.error      { border-color: color-mix(in oklch, var(--error) 20%, transparent); }
+
+    @keyframes status-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.85); }
+    }
+
+    /* ─── Liquid Glass Buttons ───────────────────────────────── */
+    .liquid-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 22px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      box-shadow: var(--glass-shadow);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--fg);
+      cursor: pointer;
+      transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.12s ease;
+      min-height: 44px;
+    }
+
+    .liquid-btn:hover {
+      border-color: var(--muted);
+      box-shadow: 0 8px 32px color-mix(in oklch, var(--fg) 12%, transparent),
+                  inset 0 1px 0 color-mix(in oklch, var(--bg) 90%, transparent);
+      transform: translateY(-1px);
+    }
+
+    .liquid-btn:active {
+      transform: translateY(0) scale(0.98);
+      box-shadow: 0 4px 16px color-mix(in oklch, var(--fg) 8%, transparent),
+                  inset 0 1px 0 color-mix(in oklch, var(--bg) 90%, transparent);
+    }
+
+    .liquid-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .liquid-btn svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    .liquid-btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ─── Shine v2 (patrón Shiny Button): barrido de luz en hover */
+    .liquid-btn-primary::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 40%;
+      left: -60%;
+      transform: skewX(-20deg);
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+      transition: left 0.7s ease;
+      pointer-events: none;
+    }
+
+    .liquid-btn-primary:hover::after {
+      left: 130%;
+    }
+
+    .liquid-btn-primary:hover {
+      background: var(--accent-deep);
+      border-color: var(--accent-deep);
+      box-shadow: 0 8px 32px color-mix(in oklch, var(--accent) 28%, transparent),
+                  inset 0 1px 0 color-mix(in oklch, var(--bg) 25%, transparent);
+    }
+
+    .liquid-btn-primary:active {
+      background: var(--accent-deep);
+      transform: translateY(0) scale(0.98);
+      box-shadow: 0 4px 16px color-mix(in oklch, var(--accent) 22%, transparent);
+    }
+
+    .action-bar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    /* ─── Transcription Area ─────────────────────────────────── */
+    .transcription {
+      width: 100%;
+      max-width: 440px;
+      text-align: center;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .transcription-text {
+      font-family: var(--font-display);
+      font-size: 15px;
+      color: var(--muted);
+      font-style: italic;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      letter-spacing: -0.01em;
+    }
+
+    .transcription-text.visible {
+      opacity: 0.8;
+    }
+
+    /* ─── Micro-entradas v2: badge y texto reaccionan al cambio ─── */
+    .status-badge.pop {
+      animation: badge-pop 0.4s ease;
+    }
+
+    @keyframes badge-pop {
+      0% { transform: scale(0.96); }
+      100% { transform: scale(1); }
+    }
+
+    .transcription-text.swap {
+      animation: text-in 0.45s ease;
+    }
+
+    @keyframes text-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 0.8; transform: translateY(0); }
+    }
+
+    /* ─── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .sidebar {
+        position: absolute;
+        z-index: 50;
+        height: 100%;
+      }
+
+      .sidebar.collapsed {
+        margin-left: 0;
+        transform: translateX(-100%);
+      }
+
+      .main-topbar {
+        padding: 16px 20px;
+      }
+
+      .bottom-controls {
+        padding-bottom: 28px;
+        gap: 12px;
+      }
+
+      .action-bar {
+        gap: 8px;
+      }
+
+      .liquid-btn {
+        padding: 10px 18px;
+        font-size: 13px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .main-topbar {
+        padding: 14px 16px;
+      }
+
+      .bottom-controls {
+        padding-bottom: 20px;
+      }
+    }
+
+    /* ─── Reduced Motion ─────────────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      .particle-halo { animation: none; }
+      .status-badge.listening .status-dot,
+      .status-badge.processing .status-dot,
+      .status-badge.speaking .status-dot { animation: none; }
+      .liquid-btn, .status-badge, .sidebar, .settings-panel { transition-duration: 0.01s; }
+      .aurora-a, .aurora-b { animation: none; }
+      .liquid-btn-primary::after { transition: none; }
+      .status-badge.pop, .transcription-text.swap { animation: none; }
+    }
+  </style>
+  <noscript><style>body { opacity: 1; }</style></noscript>
+</head>
+<body>
+
+<!-- Ambient background -->
+<div class="ambient-bg" data-od-id="ambient-bg"></div>
+<div class="aurora aurora-a" data-od-id="aurora-a" aria-hidden="true"></div>
+<div class="aurora aurora-b" data-od-id="aurora-b" aria-hidden="true"></div>
+
+<!-- Particle field: full-screen -->
+<div class="particle-halo" id="particle-halo" data-od-id="particle-halo"></div>
+<canvas id="particle-canvas" data-od-id="particle-field" aria-hidden="true"></canvas>
+
+<div class="app" data-od-id="app">
+  <!-- ═══════════════════════════════════════════════════════════════
+       SIDEBAR
+       ═══════════════════════════════════════════════════════════════ -->
+  <aside class="sidebar collapsed" id="sidebar" data-od-id="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-brand">ZIX IA</span>
+      <span class="sidebar-version">v0.2</span>
+    </div>
+
+    <div class="sidebar-section" data-od-id="sidebar-model">
+      <div class="sidebar-section-title">Modelo</div>
+      <!-- Sin modelo vinculado: no hay datos de modelo escritos a mano.
+           El mismo componente .empty que usa el Home. -->
+      <div class="empty" data-od-id="sidebar-model-empty">Aún no hay un modelo vinculado</div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="liquid-btn" id="btn-settings" data-od-id="btn-settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>Configuración</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       MAIN CONTENT
+       ═══════════════════════════════════════════════════════════════ -->
+  <main class="main" data-od-id="main">
+    <div class="main-topbar">
+      <a class="menu-btn" href="zix-home-tarjeta.html" data-od-id="btn-back" aria-label="Volver al Home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+      </a>
+      <button class="menu-btn" id="btn-menu" data-od-id="btn-menu" aria-label="Abrir menú" aria-expanded="false" aria-controls="sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+      <span class="topbar-brand" data-od-id="topbar-brand">ZIX IA</span>
+<button class="model-chip" id="btn-model" data-od-id="btn-model" aria-label="Sin modelo vinculado. Abrir configuración">
+        <span class="model-chip-dot"></span>
+        <span id="model-chip-label">Sin modelo</span>
+      </button>
+    </div>
+
+    <div class="bottom-controls" data-od-id="bottom-controls">
+      <!-- Status Badge -->
+      <div class="status-badge connected" id="status-badge" data-od-id="status-badge">
+        <span class="status-dot"></span>
+        <span id="status-text">Conectado</span>
+      </div>
+
+      <!-- Transcription -->
+      <div class="transcription" data-od-id="transcription">
+        <span class="transcription-text" id="transcription-text">En espera de tu voz...</span>
+      </div>
+
+      <!-- Action Bar -->
+      <div class="action-bar" data-od-id="action-bar">
+        <button class="liquid-btn" id="btn-new-chat" data-od-id="btn-new-chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>Nuevo chat</span>
+        </button>
+        <button class="liquid-btn liquid-btn-primary" id="btn-activate" data-od-id="btn-activate" aria-pressed="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          <span>Hablar</span>
+        </button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SETTINGS PANEL
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="settings-overlay" id="settings-overlay" data-od-id="settings-overlay"></div>
+<div class="settings-panel" id="settings-panel" data-od-id="settings-panel">
+  <div class="settings-header">
+    <span class="settings-title">Configuración</span>
+    <button class="settings-close" id="btn-settings-close" data-od-id="btn-settings-close" aria-label="Cerrar configuración">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+  </div>
+  <div class="settings-body">
+    <!-- Appearance -->
+    <div class="settings-group" data-od-id="settings-appearance">
+      <div class="settings-label">Apariencia</div>
+      <div class="settings-card">
+        <div class="theme-row">
+          <span class="settings-card-label" id="theme-label">Tema</span>
+          <div class="theme-segmented" id="theme-group" data-od-id="btn-theme" role="radiogroup" aria-labelledby="theme-label">
+            <button type="button" class="theme-seg" data-theme-value="light" role="radio" aria-checked="false">Claro</button>
+            <button type="button" class="theme-seg" data-theme-value="dark" role="radio" aria-checked="false">Oscuro</button>
+            <button type="button" class="theme-seg" data-theme-value="system" role="radio" aria-checked="true">Sistema</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Model -->
+    <div class="settings-group" data-od-id="settings-model">
+      <div class="settings-label">Modelo</div>
+      <div class="settings-card" aria-label="Modelo de IA">
+        <div class="empty">Aún no hay un modelo vinculado</div>
+      </div>
+    </div>
+
+    <!-- Provider -->
+    <div class="settings-group" data-od-id="settings-provider">
+      <div class="settings-label">Proveedor</div>
+      <div class="settings-card">
+        <div class="empty">Aún no hay un proveedor vinculado</div>
+      </div>
+    </div>
+
+    <!-- Usage · variante A: se conserva el componente, sin números inventados.
+         El anillo no lleva relleno (mismo gris que la pista) hasta que exista
+         un dato real de uso que lo pinte. -->
+    <div class="settings-group" data-od-id="settings-usage">
+      <div class="settings-label">Tiempo de uso</div>
+      <div class="usage-ring-container">
+        <div class="usage-ring is-empty">
+          <svg viewBox="0 0 56 56">
+            <circle class="usage-ring-track" cx="28" cy="28" r="26"></circle>
+            <circle class="usage-ring-fill" cx="28" cy="28" r="26"></circle>
+          </svg>
+          <span class="usage-ring-text">—</span>
+        </div>
+        <div class="usage-info">
+          <div class="usage-title">Plan mensual</div>
+          <div class="usage-detail">Sin datos de uso</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const sidebar = document.getElementById('sidebar');
+    const btnMenu = document.getElementById('btn-menu');
+    const btnSettings = document.getElementById('btn-settings');
+    const settingsOverlay = document.getElementById('settings-overlay');
+    const settingsPanel = document.getElementById('settings-panel');
+    const btnSettingsClose = document.getElementById('btn-settings-close');
+    const statusBadge = document.getElementById('status-badge');
+    const statusText = document.getElementById('status-text');
+    const transcriptionText = document.getElementById('transcription-text');
+    const btnActivate = document.getElementById('btn-activate');
+    const particleHalo = document.getElementById('particle-halo');
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+
+    // ─── Sidebar toggle ──────────────────────────────────────
+    let sidebarOpen = false;
+    btnMenu.addEventListener('click', () => {
+      sidebarOpen = !sidebarOpen;
+      sidebar.classList.toggle('collapsed', !sidebarOpen);
+      updateSidebarCenter();
+      // El boton es un disclosure: comunica si la barra lateral esta abierta.
+      btnMenu.setAttribute('aria-expanded', sidebarOpen ? 'true' : 'false');
+      btnMenu.setAttribute('aria-label', sidebarOpen ? 'Cerrar menú' : 'Abrir menú');
+    });
+
+    // ─── Settings panel ──────────────────────────────────────
+    function openSettings() {
+      settingsOverlay.classList.add('open');
+      settingsPanel.classList.add('open');
+    }
+    function closeSettings() {
+      settingsOverlay.classList.remove('open');
+      settingsPanel.classList.remove('open');
+    }
+    btnSettings.addEventListener('click', openSettings);
+    btnSettingsClose.addEventListener('click', closeSettings);
+    settingsOverlay.addEventListener('click', closeSettings);
+
+    // ─── Particle Identity Engine ────────────────────────────
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const LABELS = {
+      connected:  'Conectado',
+      listening:  'Escuchando...',
+      processing: 'Procesando...',
+      speaking:   'Respondiendo...',
+      error:      'Sin conexión'
+    };
+
+    const PALETTES = {
+      connected:  [37, 99, 235],
+      listening:  [37, 99, 235],
+      processing: [29, 78, 216],
+      speaking:   [96, 165, 250],
+      error:      [239, 68, 68]
+    };
+
+    let state = 'connected';
+    let converge = 0;
+    let convergeTarget = 0;
+    let voiceLevel = 0.05;
+    let colorCur = PALETTES.connected.slice();
+    let particles = [];
+    let W = 0, H = 0;
+    let time = 0;
+    let lastFrame = 0;
+    let running = true;
+    let demoTimers = [];
+
+    // Mouse tracking
+    let mouseX = -9999, mouseY = -9999;
+    let mouseActive = false;
+    let mouseFadeTimer = 0;
+
+    // Sidebar width for spectrum centering (overlay en móvil: no desplaza)
+    let sidebarWidth = 0;
+    let sidebarCenterX = 0;
+
+    function particleCount() {
+      return window.innerWidth < 768 ? 320 : 600;
+    }
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      updateSidebarCenter();
+    }
+
+    function updateSidebarCenter() {
+      const overlay = window.innerWidth <= 768;
+      sidebarWidth = (!overlay && sidebarOpen) ? 280 : 0;
+      sidebarCenterX = sidebarWidth + (W - sidebarWidth) / 2;
+    }
+
+    function seed() {
+      particles = [];
+      const n = particleCount();
+      // Retícula organizada: puntos distribuidos de forma uniforme, no al azar
+      // Retícula organizada a pantalla completa: márgenes mínimos para
+      // que los puntos ocupen todo el viewport, no un cuadro insetado
+      const marginX = Math.max(12, W * 0.02);
+      const marginY = Math.max(12, H * 0.03);
+      let cols = Math.ceil(Math.sqrt(n * W / Math.max(1, H)));
+      // Malla exacta sin huecos: columnas = divisor de n más cercano al
+      // ideal, así columnas × filas = n siempre (cero puntos faltantes)
+      const aspect = W / Math.max(1, H);
+      let best = cols, bestScore = Infinity, bestAspect = Infinity;
+      for (let d = 1; d <= n; d++) {
+        if (n % d !== 0) continue;
+        const score = Math.abs(d - cols);
+        const aScore = Math.abs(d / (n / d) - aspect);
+        if (score < bestScore || (score === bestScore && aScore < bestAspect)) {
+          bestScore = score; bestAspect = aScore; best = d;
+        }
+      }
+      cols = Math.max(1, best);
+      const rows = n / cols;
+      const stepX = (W - marginX * 2) / Math.max(1, cols - 1);
+      const stepY = (H - marginY * 2) / Math.max(1, rows - 1);
+      for (let i = 0; i < n; i++) {
+        const gx = i % cols;
+        const gy = Math.floor(i / cols);
+        const col01 = cols <= 1 ? 0.5 : gx / (cols - 1);
+        const row01 = rows <= 1 ? 0.5 : gy / (rows - 1);
+        // Jitter mínimo para que respire, sin romper el orden
+        const hx = marginX + gx * stepX + (Math.random() - 0.5) * 6;
+        const hy = marginY + gy * stepY + (Math.random() - 0.5) * 6;
+        const dc = Math.hypot(col01 - 0.5, row01 - 0.5) * 1.4;
+        particles.push({
+          hx, hy, x: hx, y: hy,
+          band: col01,
+          col01, row01,
+          size: 2.2 + Math.random() * 1.1,
+          alpha: 0.45 + Math.random() * 0.25,
+          depth: 0.3 + Math.random() * 0.7,
+          delay: Math.min(1, dc) * 0.45 + Math.random() * 0.06,
+          phase: (col01 * 6.28) + Math.random() * 0.6,
+          speed: 0.4 + Math.random() * 0.7,
+          // Cursor interaction: spring-based displacement
+          dispX: 0,
+          dispY: 0,
+          velX: 0,
+          velY: 0
+        });
+      }
+    }
+
+    // Envolvente ovalada: 0 en bordes, 1 en centro (espectro compacto)
+    function envelope(col01) {
+      return Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, col01))), 0.7);
+    }
+
+    // Visualizador por estado: escucha = banda densa y calmada,
+    // habla = voiceprint con picos nítidos y ondas viajeras,
+    // proceso = órbita en anillo (pensando)
+    function spectrumTarget(p, t, out) {
+      const cx = sidebarCenterX;
+      const cy = H * 0.48;
+      const env = envelope(p.col01);
+
+      if (state === 'processing') {
+        const angle = p.col01 * Math.PI * 2 + t * 0.7;
+        const radius = 46 + p.row01 * 74;
+        out.x = cx + Math.cos(angle) * radius * 1.5;
+        out.y = cy + Math.sin(angle) * radius * 0.55;
+        return;
+      }
+
+      if (state === 'speaking') {
+        // Voiceprint ZIX: picos definidos + onda viajera + grosor por fila
+        const spreadX = W * 0.30;
+        const sway = 1 + 0.035 * Math.sin(t * 3.1);
+        const x = cx + (p.col01 - 0.5) * spreadX * sway;
+        const v = voiceLevel;
+        const main = Math.sin(p.col01 * 12.5 + t * 4.6) * Math.sin(p.col01 * 5.2 - t * 3.2);
+        const detail = Math.sin(t * 7.3 + p.col01 * 22 + p.row01 * 4) * 0.25;
+        const amp = (26 + v * 120) * env;
+        const thick = (p.row01 - 0.5) * (34 + v * 46);
+        const y = cy + main * amp + detail * amp * 0.5 + thick * (0.4 + env * 0.6);
+        out.x = x;
+        out.y = y;
+        return;
+      }
+
+      // listening / connected / error: banda compacta y elegante
+      const spreadX = W * 0.30;
+      const x = cx + (p.col01 - 0.5) * spreadX + Math.sin(t * 0.7 + p.phase) * 2 * p.depth;
+      const v = voiceLevel;
+      const wave = Math.sin(p.col01 * 9 + t * 2.2) * 0.6 + Math.sin(p.col01 * 17 - t * 1.4) * 0.4;
+      const amp = (14 + v * 70) * env;
+      const thick = (p.row01 - 0.5) * (44 + v * 40);
+      const breathe = Math.sin(t * 1.8 + p.phase * 1.4) * (1.2 + v * 6) * p.depth;
+      out.x = x;
+      out.y = cy + wave * amp + thick * (0.35 + env * 0.65) + breathe;
+    }
+
+    const tmpT = { x: 0, y: 0 };
+
+    // ─── State Machine ───────────────────────────────────────
+    function setState(s, opts) {
+      state = s;
+      convergeTarget = s === 'connected' ? 0 : 1;
+      particleHalo.className = 'particle-halo' + (s !== 'connected' ? ' ' + s : '');
+      statusBadge.className = 'status-badge ' + s;
+      statusBadge.setAttribute('aria-live', 'polite');
+      statusText.textContent = LABELS[s];
+      statusBadge.classList.remove('pop');
+      void statusBadge.offsetWidth;
+      statusBadge.classList.add('pop');
+      if (!opts || !opts.keepTranscription) {
+        const texts = {
+          connected:  'En espera de tu voz...',
+          listening:  'Escuchando...',
+          processing: 'Pensando...',
+          speaking:   'ZIX está respondiendo...',
+          error:      'Sin conexión. Reintentando...'
+        };
+        transcriptionText.textContent = texts[s] || '';
+        if (s === 'connected') {
+          transcriptionText.classList.remove('visible');
+        } else {
+          transcriptionText.classList.add('visible');
+          transcriptionText.classList.remove('swap');
+          void transcriptionText.offsetWidth;
+          transcriptionText.classList.add('swap');
+        }
+      }
+    }
+
+    // ─── Demo Loop ───────────────────────────────────────────
+    function clearDemo() {
+      demoTimers.forEach(clearTimeout);
+      demoTimers = [];
+    }
+
+    function demoLoop() {
+      clearDemo();
+      if (!isListening) return;
+      demoTimers.push(setTimeout(() => { if (isListening) setState('processing'); }, 8000));
+      demoTimers.push(setTimeout(() => { if (isListening) setState('speaking'); }, 11000));
+      demoTimers.push(setTimeout(() => { if (isListening) setState('listening'); demoLoop(); }, 16000));
+    }
+
+    let isListening = false;
+
+    function toggle() {
+      isListening = !isListening;
+      clearDemo();
+      btnActivate.setAttribute('aria-pressed', String(isListening));
+      if (isListening) {
+        setState('listening');
+        demoLoop();
+      } else {
+        setState('connected');
+      }
+    }
+
+    function newChat() {
+      isListening = false;
+      clearDemo();
+      btnActivate.setAttribute('aria-pressed', 'false');
+      setState('connected');
+      chatItems.forEach((i, idx) => i.classList.toggle('active', idx === 0));
+    }
+
+    // ─── Mouse tracking ──────────────────────────────────────
+    document.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+      mouseActive = true;
+      clearTimeout(mouseFadeTimer);
+      mouseFadeTimer = setTimeout(() => { mouseActive = false; }, 2500);
+    }, { passive: true });
+
+    document.documentElement.addEventListener('mouseleave', () => {
+      mouseActive = false;
+      mouseX = -9999;
+      mouseY = -9999;
+    });
+
+    // ─── Render Loop ─────────────────────────────────────────
+    // Pre-computed constants (avoid per-frame allocations)
+    const SPRING_K = 0.035;
+    const SPRING_DAMP = 0.92;
+    const CURSOR_RADIUS = 140;
+    const CURSOR_RADIUS_SQ = CURSOR_RADIUS * CURSOR_RADIUS;
+    const CURSOR_FORCE = 1.6;
+    const MAX_DISP = 18;
+
+    function frame(ts) {
+      requestAnimationFrame(frame);
+      if (!running) return;
+      if (!lastFrame) lastFrame = ts;
+      const dt = Math.min(0.05, (ts - lastFrame) / 1000);
+      lastFrame = ts;
+      if (!reduceMotion) time += dt;
+
+      // Convergence spring
+      const rate = reduceMotion ? 0.8 : 1.8;
+      converge += Math.sign(convergeTarget - converge) * Math.min(Math.abs(convergeTarget - converge), dt * rate * 0.45);
+
+      // Voice level simulation
+      if (state === 'listening') {
+        voiceLevel += ((0.25 + 0.18 * Math.sin(time * 2.1) + 0.1 * Math.sin(time * 5.7 + 1.3)) - voiceLevel) * Math.min(1, dt * 3.5);
+      } else if (state === 'speaking') {
+        voiceLevel += ((0.45 + 0.28 * Math.abs(Math.sin(time * 3.3)) + 0.08 * Math.sin(time * 9.1)) - voiceLevel) * Math.min(1, dt * 4.5);
+      } else if (state === 'processing') {
+        voiceLevel += (0.10 - voiceLevel) * Math.min(1, dt * 1.8);
+      } else if (state === 'error') {
+        voiceLevel += (0.07 - voiceLevel) * Math.min(1, dt * 1.8);
+      } else {
+        voiceLevel += ((0.04 + 0.015 * Math.sin(time * 0.6)) - voiceLevel) * Math.min(1, dt * 1.5);
+      }
+      voiceLevel = Math.max(0, Math.min(1, voiceLevel));
+
+      // Color interpolation — pre-compute string once
+      const pal = PALETTES[state] || PALETTES.connected;
+      const ck = Math.min(1, dt * 2.2);
+      colorCur[0] += (pal[0] - colorCur[0]) * ck;
+      colorCur[1] += (pal[1] - colorCur[1]) * ck;
+      colorCur[2] += (pal[2] - colorCur[2]) * ck;
+      const cr = Math.round(colorCur[0]);
+      const cg = Math.round(colorCur[1]);
+      const cb = Math.round(colorCur[2]);
+
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = 'rgb(' + cr + ',' + cg + ',' + cb + ')';
+      const spring = state === 'connected' ? 1.6 : 3.2;
+      const isIdle = convergeTarget === 0;
+
+      // Interacción cursor solo en reposo (sin grid: cálculo directo leve)
+      const useGrid = mouseActive && isIdle && !reduceMotion;
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+
+        // Spectrum target con reloj global (onda coherente; la variedad la da phase)
+        spectrumTarget(p, time, tmpT);
+
+        let e = converge * 1.25 - p.delay * 0.28;
+        e = e < 0 ? 0 : e > 1 ? 1 : e;
+        e = e * e * (3 - 2 * e);
+
+        // Subtle idle drift
+        const drift = reduceMotion ? 0.08 : 1;
+        const dx = Math.sin(time * 0.4 * p.speed + p.phase) * 2.5 * p.depth * drift;
+        const dy = Math.cos(time * 0.35 * p.speed + p.phase * 1.3) * 2.5 * p.depth * drift;
+
+        // ─── Cursor interaction: leve y suave ───
+        if (useGrid && isIdle) {
+          const mdx = p.x - mouseX;
+          const mdy = p.y - mouseY;
+          const mDistSq = mdx * mdx + mdy * mdy;
+          if (mDistSq < CURSOR_RADIUS_SQ && mDistSq > 4) {
+            const mDist = Math.sqrt(mDistSq);
+            const t01 = 1 - mDist / CURSOR_RADIUS;
+            const eased = t01 * t01 * (3 - 2 * t01);
+            const f = eased * CURSOR_FORCE;
+            p.velX += (mdx / mDist) * f * dt * 3;
+            p.velY += (mdy / mDist) * f * dt * 3;
+          }
+
+          p.velX *= SPRING_DAMP;
+          p.velY *= SPRING_DAMP;
+          p.dispX += p.velX;
+          p.dispY += p.velY;
+          // Spring leve de retorno
+          p.dispX -= p.dispX * SPRING_K;
+          p.dispY -= p.dispY * SPRING_K;
+          // Clamp para evitar saltos bruscos
+          if (p.dispX > MAX_DISP) p.dispX = MAX_DISP;
+          else if (p.dispX < -MAX_DISP) p.dispX = -MAX_DISP;
+          if (p.dispY > MAX_DISP) p.dispY = MAX_DISP;
+          else if (p.dispY < -MAX_DISP) p.dispY = -MAX_DISP;
+        } else {
+          // Smooth return when not idle or mouse inactive
+          p.dispX *= 0.92;
+          p.dispY *= 0.92;
+          p.velX *= 0.85;
+          p.velY *= 0.85;
+        }
+
+        // Target position
+        const tx = p.hx * (1 - e) + tmpT.x * e + dx * (1 - e * 0.5) + p.dispX;
+        const ty = p.hy * (1 - e) + tmpT.y * e + dy * (1 - e * 0.5) + p.dispY;
+
+        const k = Math.min(1, dt * spring * (0.55 + p.depth * 0.45));
+        p.x += (tx - p.x) * k;
+        p.y += (ty - p.y) * k;
+
+        // Size: leve contracción al converger + pulso de voz (más vivo al hablar)
+        const convergeShrink = 1 - e * 0.12;
+        const speakBoost = state === 'speaking' ? 0.9 : 0.6;
+        const pulse = 1 + voiceLevel * speakBoost * e * Math.sin(time * 3.5 + p.phase * 2);
+        const r = Math.max(1.2, p.size * convergeShrink * pulse * (0.8 + p.depth * 0.2));
+
+        // Alpha: picos centrales más luminosos al hablar
+        const glow = state === 'speaking' ? envelope(p.col01) * voiceLevel * 0.35 : 0;
+        const a = Math.max(0.25, Math.min(0.95, p.alpha * (0.7 + e * 0.4) + glow * e));
+
+        ctx.globalAlpha = a;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, 6.2832);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // ─── Init ────────────────────────────────────────────────
+    resize();
+    seed();
+    requestAnimationFrame(frame);
+
+    // ─── Transición limpia entre pantallas ─────────────────────
+    document.body.classList.add('page-in');
+    const btnBack = document.querySelector('[data-od-id="btn-back"]');
+    if (btnBack) btnBack.addEventListener('click', (e) => {
+      e.preventDefault();
+      const href = btnBack.getAttribute('href');
+      document.body.classList.add('page-out');
+      setTimeout(() => { window.location.href = href; }, 220);
+    });
+
+    let resizeTimer = 0;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => { resize(); seed(); }, 160);
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      running = !document.hidden;
+      lastFrame = 0;
+    });
+
+    window.addEventListener('offline', () => { if (isListening) setState('error'); });
+    window.addEventListener('online', () => { if (isListening) setState('listening'); });
+
+    window.zixField = { setState };
+
+    const btnNewChat = document.getElementById('btn-new-chat');
+    btnActivate.addEventListener('click', toggle);
+    btnNewChat.addEventListener('click', newChat);
+
+    // ─── Theme (claro / oscuro / sistema) ────────────────────
+    // Predeterminado: seguir al sistema en toda la app (clave 'zix-theme',
+    // compartida con login y descarga). Se cambia desde Configuración.
+    const themeGroup = document.getElementById('theme-group');
+    const themeSegs = Array.prototype.slice.call(themeGroup.querySelectorAll('.theme-seg'));
+    const sysMedia = window.matchMedia('(prefers-color-scheme: dark)');
+    function effectiveTheme(mode) {
+      if (mode === 'dark') return 'dark';
+      if (mode === 'light') return 'light';
+      return sysMedia.matches ? 'dark' : 'light';
+    }
+    let themeAnimT = 0;
+    let themeStarted = false;
+    function pulseThemeAnim() {
+      const root = document.documentElement;
+      root.classList.remove('theme-anim');
+      void root.offsetWidth;
+      root.classList.add('theme-anim');
+      clearTimeout(themeAnimT);
+      themeAnimT = setTimeout(() => root.classList.remove('theme-anim'), 550);
+    }
+    function applyThemeMode(mode) {
+      const next = effectiveTheme(mode);
+      if (themeStarted && document.documentElement.getAttribute('data-theme') !== next) pulseThemeAnim();
+      document.documentElement.setAttribute('data-theme', next);
+      themeSegs.forEach((b) => b.setAttribute('aria-checked', String(b.getAttribute('data-theme-value') === mode)));
+      try { localStorage.setItem('zix-theme', mode); } catch (_) {}
+      themeStarted = true;
+    }
+    function readThemeMode() {
+      let saved = null;
+      try { saved = localStorage.getItem('zix-theme'); } catch (_) {}
+      return (saved === 'dark' || saved === 'light' || saved === 'system') ? saved : 'system';
+    }
+    themeSegs.forEach((b) => b.addEventListener('click', () => applyThemeMode(b.getAttribute('data-theme-value'))));
+    try {
+      const onSysChange = () => { if (readThemeMode() === 'system') applyThemeMode('system'); };
+      if (sysMedia.addEventListener) sysMedia.addEventListener('change', onSysChange);
+      else if (sysMedia.addListener) sysMedia.addListener(onSysChange);
+    } catch (_) {}
+    applyThemeMode(readThemeMode());
+
+    // ─── Modelo activo (compartido con Home vía localStorage) ───
+    // readModel() devuelve '' cuando no hay nada guardado: el Chat nunca
+    // inventa un nombre de modelo. Sin modelo, el chip muestra "Sin modelo".
+    const btnModel = document.getElementById('btn-model');
+    const modelChipLabel = document.getElementById('model-chip-label');
+    function readModel() {
+      let m = null;
+      try { m = localStorage.getItem('zix-model'); } catch (_) {}
+      return m || '';
+    }
+    function syncModelChip() {
+      const name = readModel();
+      const label = name || 'Sin modelo';
+      const aria = name
+        ? 'Modelo activo: ' + name + '. Abrir configuración'
+        : 'Sin modelo vinculado. Abrir configuración';
+      if (modelChipLabel) modelChipLabel.textContent = label;
+      if (btnModel) btnModel.setAttribute('aria-label', aria);
+    }
+    document.querySelectorAll('input[name="zix-model"]').forEach((r) => {
+      if (r.value === readModel()) r.checked = true;
+      r.closest('.model-option').classList.toggle('selected', r.checked);
+      r.addEventListener('change', () => {
+        document.querySelectorAll('.model-option').forEach((l) => {
+          const rr = l.querySelector('input[name="zix-model"]');
+          l.classList.toggle('selected', !!(rr && rr.checked));
+        });
+        try { localStorage.setItem('zix-model', r.value); } catch (_) {}
+        syncModelChip();
+      });
+    });
+    syncModelChip();
+    btnModel.addEventListener('click', openSettings);
+
+    // Chat list interaction
+    const chatItems = document.querySelectorAll('.chat-item');
+    chatItems.forEach(item => {
+      item.addEventListener('click', () => {
+        chatItems.forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+      });
+    });
+
+    // ─── Contexto desde Home (sessionStorage 'zix-chat-mode') ───
+    function loadChatHistory(id) {
+      // Backend pendiente: cuando exista persistencia, cargar aquí el
+      // historial de la conversación 'id'. La vista actual se conserva.
+    }
+    (function applyChatContext() {
+      let mode = null;
+      try { mode = sessionStorage.getItem('zix-chat-mode'); sessionStorage.removeItem('zix-chat-mode'); } catch (_) {}
+      if (mode === 'new') { newChat(); return; }
+      if (!mode) return;
+      const items = Array.prototype.slice.call(document.querySelectorAll('.chat-item'));
+      const hit = items.filter((el) => el.getAttribute('data-chat') === mode)[0];
+      if (hit) {
+        items.forEach((i) => i.classList.remove('active'));
+        hit.classList.add('active');
+        loadChatHistory(mode);
+      }
+    })();
+  })();
+</script>
+
+
+</body></html>

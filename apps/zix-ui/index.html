@@ -1,0 +1,331 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=JetBrains+Mono:wght@100..900&amp;display=swap" rel="stylesheet"><style>
+@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}
+
+/* Organic fluid morphing keyframes for sentient liquid orb */
+@keyframes morphBlob1 {
+  0% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: rotate(0deg) scale(1); }
+  34% { border-radius: 40% 60% 50% 50% / 30% 60% 40% 70%; transform: rotate(120deg) scale(1.05); }
+  67% { border-radius: 70% 30% 60% 40% / 50% 40% 60% 50%; transform: rotate(240deg) scale(0.97); }
+  100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: rotate(360deg) scale(1); }
+}
+
+@keyframes morphBlob2 {
+  0% { border-radius: 45% 55% 65% 35% / 50% 45% 55% 50%; transform: rotate(0deg) scale(1.02); }
+  33% { border-radius: 65% 35% 45% 55% / 40% 60% 40% 60%; transform: rotate(-120deg) scale(0.96); }
+  66% { border-radius: 35% 65% 50% 50% / 60% 35% 65% 40%; transform: rotate(-240deg) scale(1.06); }
+  100% { border-radius: 45% 55% 65% 35% / 50% 45% 55% 50%; transform: rotate(-360deg) scale(1.02); }
+}
+
+@keyframes morphBlob3 {
+  0% { border-radius: 50% 50% 35% 65% / 45% 60% 40% 55%; transform: rotate(0deg) scale(0.98); }
+  50% { border-radius: 60% 40% 60% 40% / 55% 40% 60% 45%; transform: rotate(180deg) scale(1.07); }
+  100% { border-radius: 50% 50% 35% 65% / 45% 60% 40% 55%; transform: rotate(360deg) scale(0.98); }
+}
+
+@keyframes gentleBreath {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+
+@keyframes activePulseEnergy {
+  0%, 100% { transform: scale(1.02); filter: drop-shadow(0 0 35px rgba(123, 240, 255, 0.45)); }
+  50% { transform: scale(1.12); filter: drop-shadow(0 0 60px rgba(123, 240, 255, 0.75)) drop-shadow(0 0 100px rgba(56, 189, 248, 0.4)); }
+}
+
+@keyframes rippleEmanation {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+
+.animate-blob-1 {
+  animation: morphBlob1 18s ease-in-out infinite;
+}
+.animate-blob-2 {
+  animation: morphBlob2 15s ease-in-out infinite;
+}
+.animate-blob-3 {
+  animation: morphBlob3 22s ease-in-out infinite;
+}
+.animate-breath {
+  animation: gentleBreath 7s ease-in-out infinite;
+}
+
+/* Hover/active del orbe con la propiedad independiente `scale`, que se compone
+   con las animaciones de `transform` (breath/pulse) en vez de ser anulada por ellas */
+#orb-assembly:hover { scale: 1.04; }
+#orb-assembly:active { scale: .95; }
+
+/* Transiciones persistentes de estado orbe/botón: al vivir en CSS estático (no en
+   las clases que se intercambian), cada cambio de valor desliza en vez de saltar.
+   Los gradientes (background-image) no son animables y cambian al instante,
+   enmascarados por la opacidad/filtro que sí se animan. */
+#orb-assembly, #orb-outer-glow, #orb-nucleus-core, #ambient-aura, #secondary-aura,
+#presence-badge, #core-state-text, #sub-status, #pill-text, #pill-icon, #orb-hint-pill {
+  transition: opacity .5s ease, filter .9s ease, box-shadow .9s ease,
+              width .9s cubic-bezier(.22,1,.36,1), height .9s cubic-bezier(.22,1,.36,1),
+              scale .9s cubic-bezier(.22,1,.36,1), border-color .5s ease;
+}
+
+/* Active listening classes */
+.state-listening .animate-blob-1 {
+  animation-duration: 6s !important;
+}
+.state-listening .animate-blob-2 {
+  animation-duration: 4.8s !important;
+}
+.state-listening .animate-blob-3 {
+  animation-duration: 7s !important;
+}
+.state-listening #orb-assembly {
+  animation: activePulseEnergy 2.4s ease-in-out infinite;
+}
+.state-listening .listening-ripple {
+  display: block !important;
+  animation: rippleEmanation 2.6s cubic-bezier(0.1, 0.6, 0.2, 1) infinite;
+}
+</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-surface-variant": "#bcc9cb", "secondary-fixed": "#e8ddff", "on-tertiary-fixed-variant": "#004c69", "on-primary-fixed-variant": "#004f56", "surface-tint": "#5fd7e6", "on-tertiary-container": "#006a90", "secondary": "#cebdff", "error-container": "#93000a", "on-secondary": "#381385", "inverse-primary": "#006972", "surface-container-high": "#292a2f", "on-tertiary": "#00354a", "error": "#ffb4ab", "on-background": "#e3e1e9", "on-primary": "#00363c", "surface-variant": "#34343a", "on-error-container": "#ffdad6", "on-tertiary-fixed": "#001e2c", "surface": "#121318", "secondary-container": "#4f319c", "outline": "#869395", "on-primary-container": "#006d77", "surface-container-lowest": "#0d0e13", "tertiary": "#fafcff", "tertiary-fixed": "#c4e7ff", "inverse-surface": "#e3e1e9", "primary-fixed": "#8ef2ff", "secondary-fixed-dim": "#cebdff", "outline-variant": "#3d494b", "primary-fixed-dim": "#5fd7e6", "surface-bright": "#38393f", "on-error": "#690005", "surface-container-highest": "#34343a", "surface-dim": "#121318", "primary": "#f3feff", "on-secondary-fixed-variant": "#4f319c", "on-primary-fixed": "#001f23", "on-surface": "#e3e1e9", "background": "#121318", "surface-container-low": "#1a1b21", "on-secondary-fixed": "#21005e", "surface-container": "#1e1f25", "inverse-on-surface": "#2f3036", "primary-container": "#7bf0ff", "tertiary-container": "#bde5ff", "tertiary-fixed-dim": "#7bd0ff", "on-secondary-container": "#bea8ff" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-lg": "1.5rem", "space-3xl": "4rem", "space-2xl": "3rem", "space-2xs": "0.25rem", "space-sm": "0.75rem", "space-xl": "2rem", "island-gap": "1rem", "space-md": "1rem", "space-xs": "0.5rem", "window-padding": "1.5rem" }, "fontFamily": { "display-sm": ["Geist"], "body-sm": ["Geist"], "body-lg": ["Geist"], "headline-lg": ["Geist"], "label-sm": ["JetBrains Mono"], "body-md": ["Geist"], "display-lg": ["Geist"], "label-md": ["JetBrains Mono"], "headline-md": ["Geist"] }, "fontSize": { "display-sm": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.025em", "fontWeight": "300" }], "body-sm": ["12px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "26px", "letterSpacing": "-0.01em", "fontWeight": "400" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "400" }], "label-sm": ["10px", { "lineHeight": "14px", "letterSpacing": "0.08em", "fontWeight": "500" }], "body-md": ["14px", { "lineHeight": "22px", "letterSpacing": "0em", "fontWeight": "400" }], "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.03em", "fontWeight": "300" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }], "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "500" }] } } } };</script></head><body class="bg-surface-container-lowest text-on-surface font-body-md text-body-md min-h-screen selection:bg-primary-container selection:text-on-primary-container"><header class="fixed top-0 left-0 w-full h-9 z-50 flex items-center justify-between px-space-sm bg-surface-container-lowest/70 backdrop-blur-2xl select-none"><div class="flex items-center gap-space-sm flex-1 h-full cursor-default"><div class="flex items-center gap-space-xs"><span class="w-2 h-2 rounded-full bg-surface-tint shadow-[0_0_10px_rgba(95,215,230,0.5)]"></span><span class="font-label-sm text-label-sm uppercase tracking-widest text-on-surface-variant">ZIX IA</span></div><div class="h-3 w-px bg-surface-variant"></div><span class="font-label-sm text-label-sm text-outline px-space-xs py-0.5 rounded bg-surface-container-low/60">v2.4 Core</span></div><div class="flex items-center h-full -mr-space-sm"><button aria-label="Minimize" class="h-9 w-11 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[16px]">minimize</span></button><button aria-label="Maximize" class="h-9 w-11 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[14px]">crop_square</span></button><button aria-label="Close" class="h-9 w-11 flex items-center justify-center text-on-surface-variant hover:bg-error hover:text-on-error transition-colors"><span class="material-symbols-outlined text-[16px]">close</span></button></div></header><main class="w-full pt-9 min-h-screen flex flex-col items-center justify-center"><div class="flex flex-col w-full min-h-[calc(100vh-2.25rem)] relative overflow-hidden select-none items-center justify-between px-space-xl py-space-xl">
+<!-- Dynamic Ambient Backlight Fields -->
+<div class="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden">
+<div class="w-[840px] h-[840px] rounded-full bg-gradient-to-tr from-surface-tint/25 via-[#38bdf8]/20 to-transparent blur-[140px] transition-all duration-1000 ease-out opacity-75 scale-110" id="ambient-aura" style="transition: 1s cubic-bezier(0.25, 1, 0.5, 1);"></div>
+<div class="absolute w-[520px] h-[520px] rounded-full bg-[#818cf8]/25 blur-[100px] opacity-50 scale-110 transition-all duration-700" id="secondary-aura" style="transition: 1s cubic-bezier(0.25, 1, 0.5, 1);"></div>
+<!-- Soft Glass Specular Noise Floor -->
+<div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_48%,rgba(95,215,230,0.05)_0%,rgba(13,14,19,0.94)_70%)]"></div>
+</div>
+<!-- Top Micro Utility Controls (Minimal Frosted Glass Capsule Anchors) -->
+<div class="w-full max-w-4xl flex items-center justify-between z-20">
+<!-- Left: Settings Control Button -->
+<div class="relative group">
+<button aria-label="Configuración" class="w-10 h-10 rounded-full flex items-center justify-center bg-surface-container-low/40 backdrop-blur-2xl text-on-surface-variant hover:text-primary hover:bg-surface-container-high/60 shadow-[inset_0_1px_1px_0_rgba(255,255,255,0.12)] transition-all duration-300 active:scale-95" id="btn-settings">
+<span class="material-symbols-outlined text-[19px] transition-transform duration-500 group-hover:rotate-45">settings</span>
+</button>
+<div class="absolute left-1/2 -translate-x-1/2 top-12 px-space-xs py-1 rounded-full bg-surface-container-highest/80 backdrop-blur-xl text-on-surface font-label-sm text-label-sm uppercase tracking-wider opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 shadow-xl whitespace-nowrap">
+        Configuración
+      </div>
+</div>
+<!-- Center Top: Ambient Presence Indicator Badge -->
+<div class="flex items-center gap-space-xs px-4 py-1.5 rounded-full bg-surface-container-high/60 backdrop-blur-xl border border-primary-container/30 shadow-[0_0_20px_rgba(123,240,255,0.25)] transition-all duration-500" id="presence-badge">
+<span class="w-2 h-2 rounded-full bg-primary-container shadow-[0_0_12px_#7bf0ff]" id="core-state-dot"></span>
+<span class="font-label-sm text-label-sm text-primary tracking-widest uppercase font-semibold" id="core-state-text" style="animation-delay: 27ms;">EN ESPERA</span>
+</div>
+<!-- Right: Information & Neural Status -->
+<div class="relative group">
+<button aria-label="Información / Estado" class="w-10 h-10 rounded-full flex items-center justify-center bg-surface-container-low/40 backdrop-blur-2xl text-on-surface-variant hover:text-primary hover:bg-surface-container-high/60 shadow-[inset_0_1px_1px_0_rgba(255,255,255,0.12)] transition-all duration-300 active:scale-95" id="btn-info">
+<span class="material-symbols-outlined text-[19px]">info</span>
+</button>
+<div class="absolute left-1/2 -translate-x-1/2 top-12 px-space-xs py-1 rounded-full bg-surface-container-highest/80 backdrop-blur-xl text-on-surface font-label-sm text-label-sm uppercase tracking-wider opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-200 shadow-xl whitespace-nowrap">
+        Información / Estado
+      </div>
+</div>
+</div>
+<!-- Central Stage: Generous Living Organic Fluid Orb System -->
+<div class="relative flex flex-col items-center justify-center z-10 my-auto py-4" id="central-stage">
+  <!-- Ambient acoustic resonance ripples -->
+  <div class="absolute w-[360px] h-[360px] sm:w-[420px] sm:h-[420px] rounded-full border border-primary-container/20 pointer-events-none opacity-0 listening-ripple hidden" id="ripple-1" style="animation-delay: 0s;"></div>
+  <div class="absolute w-[360px] h-[360px] sm:w-[420px] sm:h-[420px] rounded-full border border-[#38bdf8]/25 pointer-events-none opacity-0 listening-ripple hidden" id="ripple-2" style="animation-delay: 0.9s;"></div>
+  <div class="absolute w-[360px] h-[360px] sm:w-[420px] sm:h-[420px] rounded-full border border-surface-tint/20 pointer-events-none opacity-0 listening-ripple hidden" id="ripple-3" style="animation-delay: 1.8s;"></div>
+
+  <!-- Generously Sized Organic Living Orb -->
+  <div class="relative w-72 h-72 sm:w-80 sm:h-80 flex items-center justify-center cursor-pointer select-none transition-transform duration-700 ease-out hover:scale-[1.04] active:scale-95 group animate-breath" id="orb-assembly" role="button" aria-label="Presiona el orbe para interactuar con ZIX" tabindex="0">
+    <!-- Outer Ambient Radiant Field Glow -->
+    <div class="absolute -inset-10 rounded-full bg-gradient-to-tr from-[#006a90]/40 via-[#5fd7e6]/30 to-[#818cf8]/25 blur-3xl opacity-80 pointer-events-none transition-all duration-700" id="orb-outer-glow"></div>
+
+    <!-- Fluid Morph Layer 1: Deep Cyan / Indigo Base Membrane -->
+    <div class="absolute inset-0 bg-gradient-to-tr from-[#004f56] via-[#006a90] to-[#4f319c] rounded-full opacity-90 blur-[2px] shadow-[0_0_60px_rgba(95,215,230,0.4)] animate-blob-1 pointer-events-none transition-all duration-700" id="orb-layer-base"></div>
+
+    <!-- Fluid Morph Layer 2: Radiant Sky Blue Mid Wave -->
+    <div class="absolute inset-3 bg-gradient-to-bl from-[#7bf0ff]/80 via-[#38bdf8]/60 to-[#1e1b4b]/80 rounded-full mix-blend-screen blur-[4px] opacity-85 animate-blob-2 pointer-events-none transition-all duration-700" id="orb-layer-mid"></div>
+
+    <!-- Fluid Morph Layer 3: Celeste / Neon Cyan Core Ribbon -->
+    <div class="absolute inset-6 bg-gradient-to-r from-[#a5f3fc]/70 via-[#5fd7e6]/80 to-[#7bf0ff]/70 rounded-full mix-blend-screen blur-[6px] opacity-80 animate-blob-3 pointer-events-none transition-all duration-700" id="orb-layer-inner"></div>
+
+    <!-- Fluid Morph Layer 4: Sentient Luminous Pulsing Nucleus -->
+    <div class="absolute w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-tr from-white via-[#7bf0ff] to-[#38bdf8] blur-[8px] opacity-95 shadow-[0_0_50px_rgba(123,240,255,0.9),0_0_90px_rgba(95,215,230,0.6)] animate-breath pointer-events-none transition-all duration-700" id="orb-nucleus-core"></div>
+
+    <!-- Caustic Specular Rim & Liquid Glass Reflection -->
+    <div class="absolute inset-0 rounded-[55%_45%_50%_50%/48%_52%_48%_52%] border border-white/40 shadow-[inset_0_2px_12px_rgba(255,255,255,0.6),inset_0_-4px_16px_rgba(0,0,0,0.5)] pointer-events-none animate-blob-1 opacity-80"></div>
+  </div>
+
+  <!-- Sub-Identity & Reactive Context Status -->
+  <div class="mt-space-lg flex flex-col items-center text-center z-10 transition-all duration-500">
+    <span class="font-headline-md text-headline-md text-primary font-medium tracking-tight drop-shadow-[0_2px_14px_rgba(255,255,255,0.2)]">ZIX IA</span>
+    <span class="font-body-sm text-body-sm text-on-surface-variant mt-1.5 tracking-wide transition-colors duration-300" id="sub-status">Esperando que le hables.</span>
+    <button type="button" class="flex items-center gap-space-xs mt-space-md px-space-md py-1.5 rounded-full bg-surface-container-low/40 backdrop-blur-xl border border-white/[0.05] shadow-[inset_0_1px_1px_0_rgba(255,255,255,0.08)] cursor-pointer hover:border-white/[0.15] hover:bg-surface-container-high/50 transition-all duration-300 active:scale-95" id="orb-hint-pill">
+      <span class="material-symbols-outlined text-[16px] text-surface-tint transition-all duration-300" id="pill-icon">mic</span>
+      <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest transition-colors duration-300" id="pill-text">Toca el orbe</span>
+    </button>
+  </div>
+</div>
+<!-- Voice Engagement Command Console -->
+
+<!-- Ambient Micro Info Dialog Flyout (Conditional Minimal Overlay) -->
+<div class="absolute top-16 right-8 w-72 p-space-md rounded-xl bg-surface-container-high/70 backdrop-blur-3xl shadow-[0_20px_40px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.15)] border border-white/[0.05] opacity-0 pointer-events-none translate-y-2 transition-all duration-300 z-30" id="info-panel">
+<div class="flex items-center justify-between pb-space-xs">
+<span class="font-label-md text-label-md text-primary uppercase tracking-widest">Estado de ZIX</span>
+<span class="font-label-sm text-label-sm text-surface-tint">Conectado</span>
+</div>
+<div class="space-y-space-xs mt-2 font-body-sm text-body-sm text-on-surface-variant">
+<div class="flex justify-between">
+<span class="text-outline">Entrada</span>
+<span class="text-on-surface">Matriz Realtek HD</span>
+</div>
+<div class="flex justify-between">
+<span class="text-outline">Latencia</span>
+<span class="text-on-surface">18 ms</span>
+</div>
+<div class="flex justify-between">
+<span class="text-outline">Modo</span>
+<span class="text-on-surface">Voz Directa Windows</span>
+</div>
+</div>
+</div>
+</div>
+<script>
+  (function initZixInterface() {
+    // Algunos IDs del panel de voz no existen en este DOM: se mapean a los
+    // elementos reales (orb-hint-pill / pill-icon / pill-text) y el resto se
+    // protege con guardas para no romper las animaciones del orbe.
+    const triggerBtn = document.getElementById('voice-trigger-btn') || document.getElementById('orb-hint-pill');
+    const pulseRing = document.getElementById('mic-pulse-ring');
+    const orbAssembly = document.getElementById('orb-assembly');
+    const orbOuterGlow = document.getElementById('orb-outer-glow');
+    const orbNucleusCore = document.getElementById('orb-nucleus-core');
+    const coreStateDot = document.getElementById('core-state-dot');
+    const coreStateText = document.getElementById('core-state-text');
+    const presenceBadge = document.getElementById('presence-badge');
+    const subStatus = document.getElementById('sub-status');
+    const voiceBtnLabel = document.getElementById('voice-btn-label') || document.getElementById('pill-text');
+    const voiceBtnHint = document.getElementById('voice-btn-hint');
+    const iconMic = document.getElementById('icon-mic') || document.getElementById('pill-icon');
+    const iconStop = document.getElementById('icon-stop');
+    const btnInfo = document.getElementById('btn-info');
+    const infoPanel = document.getElementById('info-panel');
+    const ambientAura = document.getElementById('ambient-aura');
+    const secondaryAura = document.getElementById('secondary-aura');
+    const mainContainer = document.querySelector('main > div') || document.body;
+
+    let isListening = false;
+
+    // Fundido de textos al cambiar de estado: baja opacidad, intercambia el
+    // contenido y la sube. Con token por elemento para no encimar fundidos
+    // si el usuario alterna rápido entre estados.
+    const fadeTokens = new WeakMap();
+    function fadeSwap(el, apply) {
+      if (!el || typeof apply !== 'function') return;
+      const t = (fadeTokens.get(el) || 0) + 1;
+      fadeTokens.set(el, t);
+      el.style.transition = 'opacity .16s ease';
+      el.style.opacity = '0';
+      setTimeout(() => {
+        if (fadeTokens.get(el) !== t) return;
+        apply();
+        el.style.opacity = '1';
+      }, 160);
+    }
+
+    function activateListening() {
+      isListening = true;
+      mainContainer.classList.add('state-listening');
+
+      // Top Badge dynamic pulse & label
+      coreStateDot.className = "w-2 h-2 rounded-full bg-primary-container shadow-[0_0_12px_#7bf0ff] animate-ping";
+      fadeSwap(coreStateText, () => { coreStateText.textContent = "ESCUCHANDO..."; });
+      coreStateText.className = "font-label-sm text-label-sm text-primary tracking-widest uppercase font-semibold";
+      presenceBadge.className = "flex items-center gap-space-xs px-4 py-1.5 rounded-full bg-surface-container-high/60 backdrop-blur-xl border border-primary-container/30 shadow-[0_0_20px_rgba(123,240,255,0.25)] transition-all duration-500";
+
+      // Subtitle feedback
+      fadeSwap(subStatus, () => { subStatus.textContent = "Escuchando... Te atiendo ahora."; });
+      subStatus.className = "font-body-sm text-body-sm text-primary mt-1.5 tracking-wide font-normal";
+
+      // Orb energy bloom & responsiveness
+      orbOuterGlow.className = "absolute -inset-14 rounded-full bg-gradient-to-tr from-[#7bf0ff]/35 via-[#38bdf8]/30 to-[#818cf8]/25 blur-3xl opacity-90 transition-all duration-700 pointer-events-none";
+      orbNucleusCore.className = "absolute w-32 h-32 sm:w-36 sm:h-36 rounded-full bg-gradient-to-tr from-white via-[#7bf0ff] to-[#38bdf8] blur-md opacity-95 pointer-events-none shadow-[0_0_70px_rgba(123,240,255,0.95)]";
+      ambientAura.className = "w-[840px] h-[840px] rounded-full bg-gradient-to-tr from-surface-tint/25 via-[#38bdf8]/20 to-transparent blur-[140px] transition-all duration-1000 ease-out opacity-75 scale-110";
+      secondaryAura.className = "absolute w-[520px] h-[520px] rounded-full bg-[#818cf8]/25 blur-[100px] opacity-50 scale-110 transition-all duration-700";
+
+      // Button state changes: Stop icon & radiant cyan glow
+      if (iconMic) {
+        if (iconMic.id === 'pill-icon') fadeSwap(iconMic, () => { iconMic.textContent = 'stop'; });
+        else { iconMic.classList.add('hidden'); iconMic.classList.remove('flex'); }
+      }
+      if (iconStop) { iconStop.classList.remove('hidden'); iconStop.classList.add('flex'); }
+
+      if (pulseRing) {
+        pulseRing.classList.remove('opacity-0', 'scale-90');
+        pulseRing.classList.add('opacity-100', 'scale-125', 'bg-primary-container/30');
+      }
+
+      if (triggerBtn) triggerBtn.classList.add('border-primary-container/60', 'shadow-[0_0_30px_rgba(123,240,255,0.4),inset_0_1px_2px_rgba(255,255,255,0.7)]');
+      fadeSwap(voiceBtnLabel, () => { voiceBtnLabel.textContent = "Detener"; });
+      if (voiceBtnHint) voiceBtnHint.innerHTML = "Presiona para finalizar o permanece en silencio";
+    }
+
+    function deactivateListening() {
+      isListening = false;
+      mainContainer.classList.remove('state-listening');
+
+      // Top Badge calm state
+      coreStateDot.className = "w-2 h-2 rounded-full bg-surface-tint shadow-[0_0_8px_rgba(95,215,230,0.8)]";
+      fadeSwap(coreStateText, () => { coreStateText.textContent = "EN ESPERA"; });
+      coreStateText.className = "font-label-sm text-label-sm text-on-surface-variant uppercase tracking-widest";
+      presenceBadge.className = "flex items-center gap-space-xs px-4 py-1.5 rounded-full bg-surface-container-low/40 backdrop-blur-xl shadow-[inset_0_1px_1px_0_rgba(255,255,255,0.08)] border border-white/[0.04] transition-all duration-500";
+
+      // Subtitle return
+      fadeSwap(subStatus, () => { subStatus.textContent = "Esperando que le hables."; });
+      subStatus.className = "font-body-sm text-body-sm text-on-surface-variant mt-1.5 tracking-wide";
+
+      // Orb returns to serene fluid breathing
+      orbOuterGlow.className = "absolute -inset-10 rounded-full bg-gradient-to-tr from-[#7bf0ff]/20 via-[#38bdf8]/15 to-[#818cf8]/15 blur-3xl opacity-60 transition-all duration-700 pointer-events-none";
+      orbNucleusCore.className = "absolute w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-tr from-white/90 via-[#7bf0ff]/80 to-[#38bdf8]/60 blur-md opacity-90 animate-breath pointer-events-none shadow-[0_0_50px_rgba(123,240,255,0.85)]";
+      ambientAura.className = "w-[740px] h-[740px] rounded-full bg-gradient-to-tr from-surface-tint/15 via-[#38bdf8]/10 to-transparent blur-[140px] transition-all duration-1000 ease-out opacity-45";
+      secondaryAura.className = "absolute w-[440px] h-[440px] rounded-full bg-[#818cf8]/15 blur-[100px] opacity-30 transition-all duration-700";
+
+      // Button returns to mic
+      if (iconStop) { iconStop.classList.add('hidden'); iconStop.classList.remove('flex'); }
+      if (iconMic) {
+        if (iconMic.id === 'pill-icon') fadeSwap(iconMic, () => { iconMic.textContent = 'mic'; });
+        else { iconMic.classList.remove('hidden'); iconMic.classList.add('flex'); }
+      }
+
+      if (pulseRing) {
+        pulseRing.classList.remove('opacity-100', 'scale-125', 'bg-primary-container/30');
+        pulseRing.classList.add('opacity-0', 'scale-90');
+      }
+
+      if (triggerBtn) triggerBtn.classList.remove('border-primary-container/60', 'shadow-[0_0_30px_rgba(123,240,255,0.4),inset_0_1px_2px_rgba(255,255,255,0.7)]');
+      fadeSwap(voiceBtnLabel, () => { voiceBtnLabel.textContent = "Hablar con ZIX"; });
+      if (voiceBtnHint) voiceBtnHint.innerHTML = 'Presiona para activar el micrófono o di <span class="text-on-surface-variant normal-case font-body-sm font-normal">"Hola ZIX"</span>';
+    }
+
+    function toggleVoiceState() {
+      if (!isListening) {
+        activateListening();
+      } else {
+        deactivateListening();
+      }
+    }
+
+    if (triggerBtn) triggerBtn.addEventListener('click', toggleVoiceState);
+    if (orbAssembly) orbAssembly.addEventListener('click', toggleVoiceState);
+
+    // Toggle Info Dialog Overlay
+    if (btnInfo && infoPanel) btnInfo.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isVisible = !infoPanel.classList.contains('opacity-0');
+      if (isVisible) {
+        infoPanel.classList.add('opacity-0', 'pointer-events-none', 'translate-y-2');
+      } else {
+        infoPanel.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-2');
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (infoPanel && !infoPanel.contains(e.target) && e.target !== btnInfo) {
+        infoPanel.classList.add('opacity-0', 'pointer-events-none', 'translate-y-2');
+      }
+    });
+  })();
+</script></main>
+
+</body></html>

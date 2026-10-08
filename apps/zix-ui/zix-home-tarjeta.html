@@ -1,0 +1,2995 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- CSP: pagina estatica sin backend. connect-src 'none' garantiza que no
+       pueda salir nada a la red. Sin frame-ancestors porque los navegadores
+       lo ignoran dentro de un meta. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <title>ZIX IA — Home · Tarjeta</title>
+  <style>
+    :root {
+      --bg:      #ffffff;
+      --surface: #f8f9fa;
+      --fg:      #1a1a2e;
+      --muted:   #6b7280;
+      --border:  #e5e7eb;
+      --accent:  #2563eb;
+      --bg-warm: #fafaf9;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --accent-soft: color-mix(in oklch, var(--accent) 12%, transparent);
+      --fg-soft:     color-mix(in oklch, var(--fg) 5%, transparent);
+      --radius:    10px;
+      --radius-lg: 16px;
+      --font-display: 'Charter', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --font-mono: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+    }
+
+    /* ─── Dark theme: misma clave que el resto de la app ─────── */
+    [data-theme="dark"] {
+      --bg:      #0f0f13;
+      --surface: #17171d;
+      --fg:      #eef0f4;
+      --muted:   #a1a7b3;
+      --border:  #26262e;
+      --accent:  #60a5fa;
+      --bg-warm: #0f0f13;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --accent-soft: color-mix(in oklch, var(--accent) 18%, transparent);
+      --fg-soft:     color-mix(in oklch, var(--fg) 8%, transparent);
+    }
+
+    /* Transición suave de tema (clase temporal al cambiar) */
+    html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after {
+      transition: background-color 0.45s ease, border-color 0.45s ease, color 0.45s ease, box-shadow 0.45s ease !important;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg-warm);
+      color: var(--fg);
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.55;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      opacity: 0;
+    }
+
+    /* Transición limpia entre pantallas (entrada + salida) */
+    body.page-in {
+      opacity: 1;
+      transition: opacity 0.35s ease;
+    }
+
+    body.page-out {
+      opacity: 0;
+      transition: opacity 0.22s ease;
+    }
+
+    /* ─── Topbar ─────────────────────────────────────────────── */
+    .topbar {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 20px 24px 4px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-left: auto;
+    }
+
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--fg);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .icon-btn:hover {
+      border-color: var(--fg);
+      background: var(--fg-soft);
+    }
+
+    .icon-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .icon-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      user-select: none;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      flex-shrink: 0;
+    }
+
+    .status-pill.is-off .status-dot {
+      background: #ef4444;
+    }
+
+    /* ─── Layout ─────────────────────────────────────────────── */
+    .wrap {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 12px 24px 48px;
+    }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    .hero { text-align: center; padding: 28px 0 8px; }
+
+    /* ─── Variante tarjeta: héroe en tarjeta ──────────────────── */
+    .hero-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px 24px;
+      margin-top: 16px;
+    }
+
+    .hero-card .cta { margin: 16px 0 0; }
+
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 5vw, 36px);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin: 0 0 8px;
+    }
+
+    .hero p {
+      margin: 0;
+      font-size: 16px;
+      color: var(--muted);
+    }
+
+    /* ─── Buttons ────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      min-height: 44px;
+      padding: 12px 20px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      font: inherit;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .btn:hover {
+      border-color: var(--fg);
+      background: var(--fg-soft);
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .btn svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: color-mix(in oklch, var(--accent) 82%, black);
+      border-color: color-mix(in oklch, var(--accent) 82%, black);
+    }
+
+    [data-theme="dark"] .btn-primary {
+      color: #0a0f1e;
+    }
+
+    .btn-back {
+      width: auto;
+      min-height: 44px;
+      padding: 10px 16px;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    .cta { margin: 20px 0 8px; }
+
+    /* ─── Sections & rows ────────────────────────────────────── */
+    .section { margin-top: 28px; }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin: 0 2px 8px;
+    }
+
+    .stack {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .row {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font: inherit;
+      font-size: 14px;
+      color: var(--fg);
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s ease;
+    }
+
+    .row:hover {
+      border-color: var(--muted);
+    }
+
+    .row:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .row-main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .row-label { font-weight: 500; }
+
+    .row-sub {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .row-value {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .row-value.ok { color: var(--success); }
+
+    .chev {
+      color: var(--muted);
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    .note {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--muted);
+      margin: 10px 2px 0;
+    }
+
+    .empty {
+      padding: 20px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 14px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* ─── Theme segmented ────────────────────────────────────── */
+    .theme-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .theme-segmented {
+      display: inline-flex;
+      padding: 3px;
+      gap: 2px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0;
+    }
+
+    .theme-seg {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .theme-seg:hover {
+      color: var(--fg);
+    }
+
+    .theme-seg:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .theme-seg[aria-checked="true"] {
+      background: var(--accent-soft);
+      color: var(--fg);
+    }
+
+    /* ─── Configuración: buscador y controles ──────────────────── */
+    .search-wrap {
+      position: relative;
+      margin: 16px 0 4px;
+    }
+
+    .search-wrap svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      min-height: 44px;
+      padding: 11px 16px 11px 40px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      font: inherit;
+      font-size: 14px;
+    }
+
+    .search-input::placeholder {
+      color: var(--muted);
+    }
+
+    .search-input:focus {
+      border-color: var(--accent);
+    }
+
+    .search-input:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .cfg-row {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font: inherit;
+      font-size: 14px;
+      color: var(--fg);
+    }
+
+    div.cfg-row {
+      cursor: default;
+    }
+
+    button.cfg-row {
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s ease;
+    }
+
+    button.cfg-row:hover {
+      border-color: var(--muted);
+    }
+
+    .cfg-main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      text-align: left;
+    }
+
+    .cfg-sub {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .cfg-val {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .cfg-btns {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    button.cfg-row:focus-visible,
+    .cfg-switch:focus-visible,
+    .cfg-select:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .cfg-switch {
+      position: relative;
+      width: 48px;
+      height: 28px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      cursor: pointer;
+      flex-shrink: 0;
+      padding: 0;
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .cfg-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+
+    .cfg-switch[aria-checked="true"] {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .cfg-switch[aria-checked="true"]::after {
+      transform: translateX(20px);
+      background: #ffffff;
+    }
+
+    .cfg-select {
+      font: inherit;
+      font-size: 13px;
+      color: var(--fg);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      max-width: 170px;
+      flex-shrink: 0;
+    }
+
+    .cfg-range {
+      width: 130px;
+      flex-shrink: 0;
+      accent-color: var(--accent);
+    }
+
+    kbd.k {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+
+    .btn-danger {
+      border-color: color-mix(in oklch, var(--error) 45%, transparent);
+      color: var(--error);
+      background: transparent;
+    }
+
+    .btn-danger:hover {
+      background: color-mix(in oklch, var(--error) 10%, transparent);
+      border-color: var(--error);
+    }
+
+    .btn-danger.armed {
+      background: var(--error);
+      border-color: var(--error);
+      color: #ffffff;
+    }
+
+    [data-theme="dark"] .btn-danger.armed {
+      color: #0a0f1e;
+    }
+
+    /* ─── Model radio ────────────────────────────────────────── */
+    .model-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: border-color 0.15s ease;
+    }
+
+    .model-option.selected {
+      border-color: color-mix(in oklch, var(--accent) 40%, transparent);
+      background: var(--accent-soft);
+    }
+
+    .model-option input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .model-radio {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .model-option.selected .model-radio {
+      border-color: var(--accent);
+    }
+
+    .model-option.selected .model-radio::after {
+      content: '';
+      position: absolute;
+      inset: 3px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .hidden { display: none !important; }
+
+    /* ─── Proveedores: cabecera, alta y ficha ──────────────────── */
+    .prov-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 2px 8px;
+    }
+
+    .prov-head .section-title {
+      margin: 0;
+    }
+
+    .add-btn {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 1px solid color-mix(in oklch, var(--accent) 45%, transparent);
+      background: transparent;
+      color: var(--accent);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background-color 0.15s ease;
+    }
+
+    .add-btn:hover {
+      background: var(--accent-soft);
+    }
+
+    .add-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .add-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .prov-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: border-color 0.15s ease;
+    }
+
+    .prov-option:hover {
+      border-color: var(--muted);
+    }
+
+    .prov-option.selected {
+      border-color: color-mix(in oklch, var(--accent) 40%, transparent);
+      background: var(--accent-soft);
+    }
+
+    .prov-option input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .prov-option.selected .model-radio {
+      border-color: var(--accent);
+    }
+
+    .prov-option.selected .model-radio::after {
+      content: '';
+      position: absolute;
+      inset: 3px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    .badge-pending {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--warning);
+      border: 1px solid color-mix(in oklch, var(--warning) 45%, transparent);
+      border-radius: 999px;
+      padding: 3px 10px;
+      flex-shrink: 0;
+    }
+
+    .prov-remove {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .prov-remove:hover {
+      color: var(--fg);
+      background: var(--fg-soft);
+    }
+
+    .prov-remove:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .prov-remove svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* ─── MCP: pestañas, tarjetas y flujo ──────────────────────── */
+    .seg-tabs {
+      display: inline-flex;
+      padding: 3px;
+      gap: 2px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      margin-bottom: 16px;
+    }
+
+    .seg-tab {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .seg-tab:hover {
+      color: var(--fg);
+    }
+
+    .seg-tab:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .seg-tab[aria-selected="true"] {
+      background: var(--accent-soft);
+      color: var(--fg);
+    }
+
+    .mcp-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+
+    .mcp-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .mcp-name {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .mcp-status {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .mcp-status.on { color: var(--success); }
+    .mcp-status.off { color: var(--muted); }
+    .mcp-status.err { color: var(--error); }
+
+    .mcp-desc {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--muted);
+      margin: 8px 0 0;
+    }
+
+    .mcp-use {
+      font-size: 13px;
+      margin: 8px 0 0;
+    }
+
+    .mcp-use strong {
+      font-weight: 600;
+    }
+
+    .mcp-tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .tool-chip {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px 10px;
+    }
+
+    .mcp-tools .muted {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .mcp-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .btn-sm {
+      min-height: 40px;
+      padding: 8px 14px;
+      font-size: 13px;
+      width: auto;
+    }
+
+    .add-dashed {
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 52px;
+      margin-top: 8px;
+      padding: 12px 20px;
+      border-radius: var(--radius);
+      border: 1px dashed color-mix(in oklch, var(--accent) 45%, transparent);
+      background: transparent;
+      color: var(--accent);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    .add-dashed:hover {
+      background: var(--accent-soft);
+    }
+
+    .add-dashed:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .add-dashed svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .restart-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-top: 12px;
+    }
+
+    .restart-box p {
+      font-size: 13px;
+      line-height: 1.5;
+      margin: 0 0 12px;
+    }
+
+    .restart-box p strong {
+      font-weight: 600;
+    }
+
+    .steps {
+      list-style: none;
+      margin: 0 0 8px;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 0;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .step-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: transparent;
+    }
+
+    .step.active {
+      color: var(--fg);
+      font-weight: 500;
+    }
+
+    .step.active .step-dot {
+      border-color: var(--accent);
+      border-top-color: transparent;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .step.done {
+      color: var(--fg);
+    }
+
+    .step.done .step-dot {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #ffffff;
+      animation: none;
+    }
+
+    .step.done .step-dot::after {
+      content: '';
+      width: 6px;
+      height: 10px;
+      border: solid #ffffff;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg) translate(-1px, -1px);
+    }
+
+    select.input {
+      appearance: auto;
+    }
+
+    textarea.input {
+      min-height: 76px;
+      resize: vertical;
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+
+    /* ─── Modal de proveedor (nativo ZIX) ──────────────────────── */
+    .pmodal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 110;
+      background: color-mix(in oklch, var(--fg) 20%, transparent);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s ease, visibility 0.25s;
+    }
+
+    .pmodal-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .pmodal {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      width: calc(100% - 48px);
+      max-width: 440px;
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
+      z-index: 111;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 24px 64px color-mix(in oklch, var(--fg) 16%, transparent);
+      padding: 24px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-50%, -48%);
+      transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+    }
+
+    .pmodal.open {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, -50%);
+    }
+
+    .pmodal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+
+    .pmodal-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+
+    .pmodal-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0 0 16px;
+    }
+
+    .opt-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .opt-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      text-align: left;
+      font: inherit;
+      color: var(--fg);
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .opt-btn:hover {
+      border-color: var(--muted);
+    }
+
+    .opt-btn.selected {
+      border-color: color-mix(in oklch, var(--accent) 45%, transparent);
+      background: var(--accent-soft);
+    }
+
+    .opt-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .opt-icon {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .opt-icon svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .opt-btn strong {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .opt-btn small {
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+
+    .field {
+      margin-bottom: 12px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+
+    .field .opt-hint {
+      font-weight: 400;
+      color: var(--muted);
+    }
+
+    .input {
+      width: 100%;
+      min-height: 44px;
+      padding: 11px 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--fg);
+      font: inherit;
+      font-size: 14px;
+    }
+
+    .input::placeholder {
+      color: var(--muted);
+    }
+
+    .input:focus {
+      border-color: var(--accent);
+    }
+
+    .input:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .input[aria-invalid="true"] {
+      border-color: var(--error);
+    }
+
+    .field-err {
+      font-size: 12px;
+      color: var(--error);
+      margin: 4px 0 0;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .form-row .btn {
+      flex: 1;
+    }
+
+    @media (max-width: 480px) {
+      .opt-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ─── MCP por JSON: editor y vista previa ──────────────────── */
+    .json-area {
+      width: 100%;
+      min-height: 190px;
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      line-height: 1.6;
+      tab-size: 2;
+    }
+
+    .preview-box {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 4px 16px;
+      margin-bottom: 12px;
+    }
+
+    .preview-row {
+      display: flex;
+      gap: 12px;
+      padding: 8px 0;
+    }
+
+    .preview-row + .preview-row {
+      border-top: 1px solid var(--border);
+    }
+
+    .pv-k {
+      width: 104px;
+      flex-shrink: 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .pv-v {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      word-break: break-word;
+    }
+
+    .btn:disabled,
+    [aria-disabled="true"] {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    /* ─── Loading overlay ────────────────────────────────────── */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      display: grid;
+      place-items: center;
+      background: color-mix(in oklch, var(--bg) 60%, transparent);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s ease, visibility 0.25s;
+    }
+
+    .loading-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .loading-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      box-shadow: 0 8px 32px color-mix(in oklch, var(--fg) 8%, transparent);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 480px) {
+      .topbar, .wrap { padding-left: 16px; padding-right: 16px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .spinner { animation: none; border-top-color: var(--border); }
+      .loading-overlay { transition-duration: 0.01s; }
+      .watermark { animation: none; }
+      .drawer, .drawer-overlay { transition-duration: 0.01s; }
+      .pmodal, .pmodal-overlay { transition-duration: 0.01s; }
+      .step.active .step-dot { animation: none; border-top-color: var(--border); }
+    }
+
+    /* ─── Marca de agua ZIX (tenue, gradiente lento) ─────────── */
+    .watermark {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: clamp(200px, 42vw, 560px);
+      letter-spacing: -0.04em;
+      line-height: 1;
+      color: transparent;
+      background: linear-gradient(120deg,
+        color-mix(in oklch, var(--accent) 7%, transparent),
+        color-mix(in oklch, var(--accent) 2%, transparent),
+        color-mix(in oklch, var(--accent) 7%, transparent));
+      background-size: 220% 220%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      opacity: 0.5;
+      user-select: none;
+      animation: watermark-drift 26s ease-in-out infinite alternate;
+    }
+
+    @keyframes watermark-drift {
+      from { background-position: 0% 40%; }
+      to { background-position: 100% 60%; }
+    }
+
+    .topbar, .wrap { position: relative; z-index: 1; }
+
+    /* ─── Drawer (módulos + configuración) ───────────────────── */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: color-mix(in oklch, var(--fg) 20%, transparent);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .drawer-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: min(320px, 85vw);
+      z-index: 101;
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      transform: translateX(-100%);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      gap: 4px;
+      overflow-y: auto;
+    }
+
+    .drawer.open {
+      transform: none;
+    }
+
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .drawer-header .brand {
+      margin-left: 0;
+    }
+
+    .drawer-group {
+      margin-top: 16px;
+    }
+
+    /* ─── Recientes: conversación actual destacada ────────────── */
+    .row-active {
+      background: var(--accent-soft);
+      border-color: color-mix(in oklch, var(--accent) 40%, transparent);
+    }
+
+    .row-active .row-label {
+      color: var(--accent);
+    }
+
+    .row-active .dot {
+      background: var(--accent);
+    }
+  </style>
+  <script>
+    // Tema inicial sin parpadeo: misma clave que el resto de la app ('zix-theme').
+    // Por defecto sigue al sistema (oscuro si la PC está en dark).
+    (function () {
+      function resolve() {
+        var saved = null;
+        try { saved = localStorage.getItem('zix-theme'); } catch (_) {}
+        var mode = (saved === 'dark' || saved === 'light' || saved === 'system') ? saved : 'system';
+        var dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      }
+      resolve();
+      try {
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+        if (mq.addEventListener) mq.addEventListener('change', resolve);
+        else if (mq.addListener) mq.addListener(resolve);
+      } catch (_) {}
+    })();
+  </script>
+  <noscript><style>body { opacity: 1; }</style></noscript>
+</head>
+<body>
+  <div class="watermark" aria-hidden="true">ZIX</div>
+  <header class="topbar" data-od-id="home-topbar">
+    <button class="icon-btn" id="btn-menu" data-od-id="btn-menu" aria-label="Abrir menú" aria-expanded="false" aria-controls="drawer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="20" y2="17"></line></svg>
+    </button>
+    <span class="status-pill" id="home-status" data-od-id="home-status">
+      <span class="status-dot"></span>
+      <span id="home-status-text">Conectado</span>
+    </span>
+    <span class="brand">ZIX IA</span>
+  </header>
+
+  <main class="wrap" data-od-id="home-main">
+    <!-- ═══ HUB ═══ -->
+    <section class="view active" id="view-hub" data-od-id="view-hub" aria-label="Centro principal">
+      <div class="hero hero-card">
+        <h1>Hola, soy ZIX</h1>
+        <p>Tu centro de control. Habla conmigo o gestiona el sistema.</p>
+        <div class="cta">
+          <button class="btn btn-primary" id="btn-new-chat" data-od-id="btn-new-chat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>Nueva conversación</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="section" data-od-id="home-recent">
+        <h2 class="section-title">Chats recientes</h2>
+        <div class="empty" data-od-id="recent-empty">Aún no hay chats.</div>
+      </div>
+
+      <div class="section" data-od-id="home-state">
+        <h2 class="section-title">Estado del sistema</h2>
+        <ul class="stack">
+          <li>
+            <div class="row" data-od-id="state-conexion">
+              <span class="row-label">Conexión</span>
+              <span class="row-value ok" id="state-conexion-value">Conectado</span>
+            </div>
+          </li>
+          <li>
+            <div class="row" data-od-id="state-recursos">
+              <span class="row-label">Servidores MCP</span>
+              <span class="row-value" data-mcp-count>0 conectados</span>
+            </div>
+          </li>
+          <li>
+            <div class="row" data-od-id="state-modelo">
+              <span class="row-label">Modelo activo</span>
+              <span class="row-value" data-model-sub>Aún no hay un modelo vinculado</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ═══ MODELOS ═══ -->
+    <section class="view" id="view-modelos" data-od-id="view-modelos" aria-label="Modelos">
+      <button class="btn btn-back" data-back data-od-id="back-modelos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        <span>Home</span>
+      </button>
+      <div class="hero" style="text-align:left;padding-top:8px">
+        <h1>Modelos</h1>
+        <p>El modelo seleccionado queda asociado a la configuración de ZIX.</p>
+      </div>
+      <div class="section">
+        <div class="empty" data-od-id="modelos-empty">Aún no hay un modelo vinculado.</div>
+        <p class="note">El modelo se podrá elegir cuando ZIX tenga uno configurado.</p>
+      </div>
+    </section>
+
+    <!-- ═══ PROVEEDORES ═══ -->
+    <section class="view" id="view-proveedores" data-od-id="view-proveedores" aria-label="Proveedores">
+      <button class="btn btn-back" data-back data-od-id="back-proveedores">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        <span>Home</span>
+      </button>
+      <div class="hero" style="text-align:left;padding-top:8px">
+        <h1>Proveedores</h1>
+        <p>Proveedores configurados para ZIX.</p>
+      </div>
+      <div class="section">
+        <div class="prov-head">
+          <h2 class="section-title">Configurados</h2>
+          <button class="add-btn" id="btn-add-provider" data-od-id="btn-add-provider" aria-label="Agregar proveedor" aria-haspopup="dialog">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          </button>
+        </div>
+        <ul class="stack" id="provider-list" data-od-id="provider-list"></ul>
+        <div class="empty hidden" id="provider-empty" data-od-id="proveedores-empty">Aún no hay un proveedor vinculado.</div>
+        <p class="note">El proveedor seleccionado queda disponible para el sistema de modelos.</p>
+      </div>
+    </section>
+
+    <!-- ═══ MCP ═══ -->
+    <section class="view" id="view-mcp" data-od-id="view-mcp" aria-label="MCPs">
+      <button class="btn btn-back" data-back data-od-id="back-mcp">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        <span>Home</span>
+      </button>
+      <div class="hero" style="text-align:left;padding-top:8px">
+        <h1>MCPs</h1>
+        <p>Administra lo conectado y descubre integraciones.</p>
+      </div>
+      <div class="section">
+        <div class="seg-tabs" role="tablist" aria-label="Secciones MCP" data-od-id="mcp-tabs">
+          <button type="button" class="seg-tab" role="tab" aria-selected="true" data-mcp-tab="servers" data-od-id="mcp-tab-servers">Servidores</button>
+          <button type="button" class="seg-tab" role="tab" aria-selected="false" data-mcp-tab="hub" data-od-id="mcp-tab-hub">Hub</button>
+        </div>
+
+        <div id="mcp-tab-servers" data-od-id="mcp-servers" role="tabpanel">
+          <ul class="stack" id="mcp-server-list" data-od-id="mcp-server-list"></ul>
+          <div class="empty" id="mcp-empty" data-od-id="mcp-empty">Sin servidores MCP conectados.</div>
+          <button class="add-dashed" id="btn-add-mcp" data-od-id="btn-add-mcp">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>+ Agregar servidor MCP</span>
+          </button>
+          <div class="restart-box hidden" id="mcp-restart-box" data-od-id="mcp-restart-box">
+            <p><strong>Reiniciar ZIX.</strong> Es necesario para cargar correctamente los nuevos MCP.</p>
+            <button class="btn btn-primary" id="btn-restart-zix" data-od-id="btn-restart-zix">Reiniciar ZIX</button>
+          </div>
+          <p class="note">La conexión real se activará al conectar el servicio.</p>
+        </div>
+
+        <div id="mcp-tab-hub" class="hidden" data-od-id="mcp-hub" role="tabpanel">
+          <p class="note" style="margin-top:0">Recomendados para ZIX. Toca Integrar y sigue el flujo.</p>
+          <ul class="stack" id="mcp-hub-list" data-od-id="mcp-hub-list">
+            <li>
+              <div class="mcp-card" data-od-id="hub-filesystem">
+                <div class="mcp-card-head">
+                  <span class="mcp-name">Filesystem</span>
+                </div>
+                <p class="mcp-desc">Accede a tus archivos y carpetas desde ZIX.</p>
+                <p class="mcp-use"><strong>Útil para:</strong> leer documentos y guardar resultados.</p>
+                <div class="mcp-tools">
+                  <span class="tool-chip">Leer archivos</span>
+                  <span class="tool-chip">Escribir archivos</span>
+                </div>
+                <div class="mcp-actions">
+                  <button class="btn btn-primary btn-sm" data-integrate="filesystem" data-od-id="integrate-filesystem">Integrar</button>
+                </div>
+              </div>
+            </li>
+            <li>
+              <div class="mcp-card" data-od-id="hub-github">
+                <div class="mcp-card-head">
+                  <span class="mcp-name">GitHub</span>
+                </div>
+                <p class="mcp-desc">Conecta tus repositorios con ZIX.</p>
+                <p class="mcp-use"><strong>Útil para:</strong> revisar código, issues y pull requests.</p>
+                <div class="mcp-tools">
+                  <span class="tool-chip">Repos</span>
+                  <span class="tool-chip">Issues</span>
+                  <span class="tool-chip">Pull requests</span>
+                </div>
+                <div class="mcp-actions">
+                  <button class="btn btn-primary btn-sm" data-integrate="github" data-od-id="integrate-github">Integrar</button>
+                </div>
+              </div>
+            </li>
+            <li>
+              <div class="mcp-card" data-od-id="hub-postgres">
+                <div class="mcp-card-head">
+                  <span class="mcp-name">PostgreSQL</span>
+                </div>
+                <p class="mcp-desc">Consulta tus bases de datos desde ZIX.</p>
+                <p class="mcp-use"><strong>Útil para:</strong> responder preguntas con datos reales.</p>
+                <div class="mcp-tools">
+                  <span class="tool-chip">Consultas SQL</span>
+                  <span class="tool-chip">Esquemas</span>
+                </div>
+                <div class="mcp-actions">
+                  <button class="btn btn-primary btn-sm" data-integrate="postgres" data-od-id="integrate-postgres">Integrar</button>
+                </div>
+              </div>
+            </li>
+            <li>
+              <div class="mcp-card" data-od-id="hub-playwright">
+                <div class="mcp-card-head">
+                  <span class="mcp-name">Playwright</span>
+                </div>
+                <p class="mcp-desc">Automatiza el navegador desde ZIX.</p>
+                <p class="mcp-use"><strong>Útil para:</strong> revisar páginas y extraer información.</p>
+                <div class="mcp-tools">
+                  <span class="tool-chip">Navegar</span>
+                  <span class="tool-chip">Extraer texto</span>
+                </div>
+                <div class="mcp-actions">
+                  <button class="btn btn-primary btn-sm" data-integrate="playwright" data-od-id="integrate-playwright">Integrar</button>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ COMANDOS ═══ -->
+    <section class="view" id="view-comandos" data-od-id="view-comandos" aria-label="Comandos">
+      <button class="btn btn-back" data-back data-od-id="back-comandos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        <span>Home</span>
+      </button>
+      <div class="hero" style="text-align:left;padding-top:8px">
+        <h1>Comandos</h1>
+        <p>Consulta los comandos disponibles de ZIX.</p>
+      </div>
+      <div class="section">
+        <div class="empty" data-od-id="cmd-empty">Sin comandos registrados todavía.</div>
+        <p class="note">Cuando haya comandos, también podrás usarlos desde el Chat con /.</p>
+      </div>
+    </section>
+
+    <!-- ═══ CONFIGURACIÓN ═══ -->
+    <section class="view" id="view-config" data-od-id="view-config" aria-label="Configuración">
+      <button class="btn btn-back" data-back data-od-id="back-config">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        <span>Home</span>
+      </button>
+      <div class="hero" style="text-align:left;padding-top:8px">
+        <h1>Configuración</h1>
+        <p>Ajustes generales de ZIX.</p>
+      </div>
+      <div class="search-wrap" data-od-id="cfg-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
+        <input class="search-input" id="cfg-search" type="search" placeholder="Buscar ajuste…" aria-label="Buscar ajuste" autocomplete="off">
+      </div>
+      <div class="empty hidden" id="cfg-no-results" data-od-id="cfg-no-results">Sin resultados para esa búsqueda.</div>
+
+      <div class="section cfg-cat" data-od-id="cfg-general">
+        <h2 class="section-title">General</h2>
+        <ul class="stack">
+          <li data-search="idioma language español">
+            <div class="cfg-row"><span class="cfg-main"><span>Idioma</span></span><select class="cfg-select" data-setting="lang" aria-label="Idioma"><option value="es" selected>Español</option></select></div>
+          </li>
+          <li data-search="tema claro oscuro sistema apariencia modo nocturno">
+            <div class="theme-row">
+              <span id="theme-label">Tema</span>
+              <div class="theme-segmented" id="theme-group" data-od-id="btn-theme" role="radiogroup" aria-labelledby="theme-label">
+                <button type="button" class="theme-seg" data-theme-value="light" role="radio" aria-checked="false">Claro</button>
+                <button type="button" class="theme-seg" data-theme-value="dark" role="radio" aria-checked="false">Oscuro</button>
+                <button type="button" class="theme-seg" data-theme-value="system" role="radio" aria-checked="true">Sistema</button>
+              </div>
+            </div>
+          </li>
+          <li data-search="inicio automatico arrancar sistema encender equipo">
+            <div class="cfg-row"><span class="cfg-main"><span>Inicio automático</span><span class="cfg-sub">Abrir ZIX al encender el equipo</span></span><button type="button" class="cfg-switch" role="switch" aria-checked="false" data-setting="autostart" aria-label="Inicio automático"></button></div>
+          </li>
+          <li data-search="ventana comportamiento minimizar bandeja cerrar">
+            <div class="cfg-row"><span class="cfg-main"><span>Comportamiento de la ventana</span></span><select class="cfg-select" data-setting="winBehavior" aria-label="Comportamiento de la ventana"><option value="tray" selected>Minimizar a la bandeja</option><option value="visible">Mantener visible</option><option value="close">Cerrar por completo</option></select></div>
+          </li>
+          <li data-search="animaciones movimiento efectos transiciones">
+            <div class="cfg-row"><span class="cfg-main"><span>Animaciones</span></span><button type="button" class="cfg-switch" role="switch" aria-checked="true" data-setting="animations" aria-label="Animaciones"></button></div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section cfg-cat" data-od-id="cfg-voz">
+        <h2 class="section-title">Voz</h2>
+        <ul class="stack">
+          <li data-search="hey zix activacion voz siempre escucha">
+            <div class="cfg-row"><span class="cfg-main"><span>Activación con “Hey ZIX”</span><span class="cfg-sub">Requiere micrófono siempre activo</span></span><button type="button" class="cfg-switch" role="switch" aria-checked="false" data-setting="heyzix" aria-label="Activación con Hey ZIX"></button></div>
+          </li>
+          <li data-search="microfono entrada audio dispositivo">
+            <div class="cfg-row"><span class="cfg-main"><span>Micrófono</span></span><select class="cfg-select" data-setting="mic" aria-label="Micrófono"><option value="default" selected>Predeterminado del sistema</option></select></div>
+          </li>
+          <li data-search="sensibilidad microfono nivel voz">
+            <div class="cfg-row"><span class="cfg-main"><span>Sensibilidad</span></span><input type="range" class="cfg-range" min="0" max="100" value="50" data-setting="sensitivity" data-unit="%" aria-label="Sensibilidad del micrófono"><span class="cfg-val" id="rv-sensitivity">50%</span></div>
+          </li>
+          <li data-search="tiempo espera silencio escucha segundos">
+            <div class="cfg-row"><span class="cfg-main"><span>Tiempo de espera</span></span><select class="cfg-select" data-setting="waitTime" aria-label="Tiempo de espera"><option value="3">3 segundos</option><option value="5" selected>5 segundos</option><option value="10">10 segundos</option></select></div>
+          </li>
+          <li data-search="volumen voz respuesta alto">
+            <div class="cfg-row"><span class="cfg-main"><span>Volumen de voz</span></span><input type="range" class="cfg-range" min="0" max="100" value="70" data-setting="voiceVol" data-unit="%" aria-label="Volumen de voz"><span class="cfg-val" id="rv-voiceVol">70%</span></div>
+          </li>
+          <li data-search="velocidad voz habla ritmo">
+            <div class="cfg-row"><span class="cfg-main"><span>Velocidad de voz</span></span><input type="range" class="cfg-range" min="50" max="150" value="100" data-setting="voiceRate" data-unit="%" aria-label="Velocidad de voz"><span class="cfg-val" id="rv-voiceRate">100%</span></div>
+          </li>
+          <li data-search="voz seleccionada locutor">
+            <div class="cfg-row"><span class="cfg-main"><span>Voz seleccionada</span></span><select class="cfg-select" data-setting="voice" aria-label="Voz seleccionada"><option value="zix1" selected>ZIX Voz 1</option><option value="zix2">ZIX Voz 2</option></select></div>
+          </li>
+          <li data-search="despues respuesta comportamiento silencio escuchar">
+            <div class="cfg-row"><span class="cfg-main"><span>Después de responder</span></span><select class="cfg-select" data-setting="afterReply" aria-label="Comportamiento después de responder"><option value="listen" selected>Volver a escuchar</option><option value="quiet">Quedarse en silencio</option></select></div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section cfg-cat" data-od-id="cfg-sonido">
+        <h2 class="section-title">Sonido y notificaciones</h2>
+        <ul class="stack">
+          <li data-search="sonido activacion inicio despertar tono">
+            <div class="cfg-row"><span class="cfg-main"><span>Sonido de activación</span></span><button type="button" class="cfg-switch" role="switch" aria-checked="true" data-setting="sndWake" aria-label="Sonido de activación"></button></div>
+          </li>
+          <li data-search="sonido terminar escuchar fin tono">
+            <div class="cfg-row"><span class="cfg-main"><span>Sonido al terminar de escuchar</span></span><button type="button" class="cfg-switch" role="switch" aria-checked="true" data-setting="sndEnd" aria-label="Sonido al terminar de escuchar"></button></div>
+          </li>
+          <li data-search="sonidos notificacion avisos tono">
+            <div class="cfg-row"><span class="cfg-main"><span>Sonidos de notificación</span></span><button type="button" class="cfg-switch" role="switch" aria-checked="true" data-setting="sndNotif" aria-label="Sonidos de notificación"></button></div>
+          </li>
+          <li data-search="volumen efectos sonido nivel">
+            <div class="cfg-row"><span class="cfg-main"><span>Volumen de efectos</span></span><input type="range" class="cfg-range" min="0" max="100" value="60" data-setting="fxVol" data-unit="%" aria-label="Volumen de efectos"><span class="cfg-val" id="rv-fxVol">60%</span></div>
+          </li>
+          <li data-search="activar desactivar sonidos todos silencio general">
+            <div class="cfg-row"><span class="cfg-main"><span>Sonidos</span><span class="cfg-sub">Interruptor general</span></span><button type="button" class="cfg-switch" role="switch" aria-checked="true" data-setting="sndMaster" aria-label="Activar sonidos"></button></div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section cfg-cat" data-od-id="cfg-ia">
+        <h2 class="section-title">IA y modelos</h2>
+        <ul class="stack">
+          <li data-search="proveedor principal openai modelo">
+            <button type="button" class="cfg-row" data-open-view="view-proveedores" data-od-id="cfg-prov-main"><span class="cfg-main"><span>Proveedor principal</span><span class="cfg-sub" data-provider-sub>Aún no hay un proveedor vinculado</span></span><span class="chev">›</span></button>
+          </li>
+          <li data-search="proveedor respaldo secundario alternativo">
+            <div class="cfg-row"><span class="cfg-main"><span>Proveedor de respaldo</span><span class="cfg-sub">Se usa si el principal falla</span></span><span class="cfg-val">Ninguno</span></div>
+          </li>
+          <li data-search="modelo seleccionado gpt">
+            <button type="button" class="cfg-row" data-open-view="view-modelos" data-od-id="cfg-model-sel"><span class="cfg-main"><span>Modelo seleccionado</span><span class="cfg-sub" data-model-sub>Aún no hay un modelo vinculado</span></span><span class="chev">›</span></button>
+          </li>
+          <li data-search="modelo local pc equipo ollama">
+            <div class="cfg-row"><span class="cfg-main"><span>Modelo local</span><span class="cfg-sub">Usar un modelo en este equipo</span></span><button type="button" class="cfg-switch" role="switch" aria-checked="false" data-setting="localModel" aria-label="Modelo local"></button></div>
+          </li>
+          <li data-search="sin internet offline desconectado comportamiento">
+            <div class="cfg-row"><span class="cfg-main"><span>Sin Internet</span></span><select class="cfg-select" data-setting="offlineMode" aria-label="Comportamiento sin Internet"><option value="wait" selected>Avisar y esperar</option><option value="local">Usar modelo local</option></select></div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section cfg-cat" data-od-id="cfg-memoria">
+        <h2 class="section-title">Memoria</h2>
+        <ul class="stack">
+          <li data-search="memoria activar recordar aprender">
+            <div class="cfg-row"><span class="cfg-main"><span>Memoria</span><span class="cfg-sub">ZIX recuerda lo importante entre sesiones</span></span><button type="button" class="cfg-switch" role="switch" aria-checked="true" data-setting="memOn" aria-label="Memoria"></button></div>
+          </li>
+          <li data-search="administrar recuerdos ver lista guardar">
+            <div class="cfg-row"><span class="cfg-main"><span>Administrar recuerdos</span><span class="cfg-sub">Sin recuerdos todavía</span></span></div>
+          </li>
+          <li data-search="borrar memoria recuerdos olvidar eliminar">
+            <div class="cfg-row"><span class="cfg-main"><span>Borrar memoria</span><span class="cfg-sub">Elimina todos los recuerdos guardados</span></span><button type="button" class="btn btn-danger btn-sm" data-confirm data-action="clear-memory">Borrar</button></div>
+          </li>
+        </ul>
+        <p class="note hidden" id="note-memoria">Memoria vacía.</p>
+        <p class="note">Tú decides qué conserva ZIX: la memoria solo guarda lo que aceptes en la conversación.</p>
+      </div>
+
+      <div class="section cfg-cat" data-od-id="cfg-mcp">
+        <h2 class="section-title">MCP</h2>
+        <ul class="stack">
+          <li data-search="mcp servidores instalados conectados lista">
+            <button type="button" class="cfg-row" data-open-view="view-mcp" data-od-id="cfg-mcp-list"><span class="cfg-main"><span>Servidores instalados</span><span class="cfg-sub" id="cfg-mcp-count">0 instalados</span></span><span class="chev">›</span></button>
+          </li>
+          <li data-search="mcp activar desactivar servidores interruptor">
+            <div class="cfg-row"><span class="cfg-main"><span>Servidores activos</span></span><button type="button" class="cfg-switch" role="switch" aria-checked="true" data-setting="mcpOn" aria-label="Servidores MCP activos"></button></div>
+          </li>
+          <li data-search="mcp reiniciar recargar servidores">
+            <button type="button" class="cfg-row" data-open-view="view-mcp" data-od-id="cfg-mcp-restart"><span class="cfg-main"><span>Reiniciar MCP</span><span class="cfg-sub">Aplica cambios desde Servidores</span></span><span class="chev">›</span></button>
+          </li>
+          <li data-search="mcp logs errores registro fallos">
+            <div class="cfg-row"><span class="cfg-main"><span>Logs y errores</span><span class="cfg-sub">Sin errores registrados</span></span></div>
+          </li>
+          <li data-search="mcp importar exportar configuracion respaldo">
+            <div class="cfg-row"><span class="cfg-main"><span>Importar / Exportar</span></span><span class="cfg-btns"><button type="button" class="btn btn-sm" data-mcp-io="import">Importar</button><button type="button" class="btn btn-sm" data-mcp-io="export">Exportar</button></span></div>
+          </li>
+        </ul>
+        <p class="note hidden" id="note-mcp-io">Disponible al conectar el servicio.</p>
+      </div>
+
+      <div class="section cfg-cat" data-od-id="cfg-sistema">
+        <h2 class="section-title">Sistema</h2>
+        <ul class="stack">
+          <li data-search="dispositivos entrada microfono audio">
+            <div class="cfg-row"><span class="cfg-main"><span>Dispositivo de entrada</span></span><select class="cfg-select" data-setting="inDevice" aria-label="Dispositivo de entrada"><option value="default" selected>Predeterminado</option></select></div>
+          </li>
+          <li data-search="dispositivos salida altavoces audio">
+            <div class="cfg-row"><span class="cfg-main"><span>Dispositivo de salida</span></span><select class="cfg-select" data-setting="outDevice" aria-label="Dispositivo de salida"><option value="default" selected>Predeterminado</option></select></div>
+          </li>
+          <li data-search="atajos teclado shortcuts hablar abrir silenciar">
+            <div class="cfg-row"><span class="cfg-main"><span>Pulsar para hablar</span></span><span class="cfg-val"><kbd class="k">Alt</kbd> + <kbd class="k">Espacio</kbd></span></div>
+          </li>
+          <li data-search="atajos abrir zix ventana teclado">
+            <div class="cfg-row"><span class="cfg-main"><span>Abrir ZIX</span></span><span class="cfg-val"><kbd class="k">Ctrl</kbd> + <kbd class="k">Shift</kbd> + <kbd class="k">Z</kbd></span></div>
+          </li>
+          <li data-search="atajos silenciar mute teclado">
+            <div class="cfg-row"><span class="cfg-main"><span>Silenciar</span></span><span class="cfg-val"><kbd class="k">Alt</kbd> + <kbd class="k">M</kbd></span></div>
+          </li>
+          <li data-search="notificaciones avisos sistema permitir">
+            <div class="cfg-row"><span class="cfg-main"><span>Notificaciones</span></span><button type="button" class="cfg-switch" role="switch" aria-checked="true" data-setting="sysNotif" aria-label="Notificaciones del sistema"></button></div>
+          </li>
+          <li data-search="segundo plano fondo bandeja minimizar">
+            <div class="cfg-row"><span class="cfg-main"><span>En segundo plano</span></span><select class="cfg-select" data-setting="bgBehavior" aria-label="Comportamiento en segundo plano"><option value="tray" selected>Seguir en la bandeja</option><option value="quiet">Silencio total</option></select></div>
+          </li>
+          <li data-search="uso recursos cpu rendimiento consumo">
+            <div class="cfg-row"><span class="cfg-main"><span>Uso de recursos</span></span><span class="cfg-val" id="sys-cores">…</span></div>
+          </li>
+        </ul>
+      </div>
+
+      <div class="section cfg-cat" data-od-id="cfg-privacidad">
+        <h2 class="section-title">Privacidad</h2>
+        <ul class="stack">
+          <li data-search="privacidad microfono permiso escucha">
+            <div class="cfg-row"><span class="cfg-main"><span>Micrófono</span><span class="cfg-sub">Solo escucha cuando lo activas</span></span><button type="button" class="cfg-switch" role="switch" aria-checked="true" data-setting="privMic" aria-label="Permiso de micrófono"></button></div>
+          </li>
+          <li data-search="privacidad camara video permiso">
+            <div class="cfg-row"><span class="cfg-main"><span>Cámara</span><span class="cfg-sub">Apagada por defecto</span></span><button type="button" class="cfg-switch" role="switch" aria-checked="false" data-setting="privCam" aria-label="Permiso de cámara"></button></div>
+          </li>
+          <li data-search="privacidad datos almacenados local equipo">
+            <div class="cfg-row"><span class="cfg-main"><span>Datos almacenados</span><span class="cfg-sub">Solo en este equipo</span></span></div>
+          </li>
+          <li data-search="privacidad eliminar datos borrar todo">
+            <div class="cfg-row"><span class="cfg-main"><span>Eliminar datos</span><span class="cfg-sub">Borra datos y servidores guardados</span></span><button type="button" class="btn btn-danger btn-sm" data-confirm data-action="wipe-data">Eliminar</button></div>
+          </li>
+        </ul>
+        <p class="note hidden" id="note-privacidad">Datos eliminados.</p>
+      </div>
+
+      <div class="section cfg-cat" data-od-id="cfg-avanzado">
+        <h2 class="section-title">Avanzado</h2>
+        <ul class="stack">
+          <li data-search="avanzado desarrollador developer modo debug">
+            <div class="cfg-row"><span class="cfg-main"><span>Modo desarrollador</span></span><button type="button" class="cfg-switch" role="switch" aria-checked="false" data-setting="devMode" aria-label="Modo desarrollador"></button></div>
+          </li>
+          <li data-search="avanzado logs registro eventos">
+            <div class="cfg-row"><span class="cfg-main"><span>Logs</span><span class="cfg-sub">Sin eventos registrados</span></span></div>
+          </li>
+          <li data-search="avanzado diagnostico estado comprobar salud">
+            <div class="cfg-row"><span class="cfg-main"><span>Diagnóstico</span></span><button type="button" class="btn btn-sm" id="btn-diag" data-od-id="btn-diag">Comprobar</button></div>
+          </li>
+        </ul>
+        <ul class="stack hidden" id="diag-results" data-od-id="diag-results" style="margin-top:8px"></ul>
+        <ul class="stack" style="margin-top:8px">
+          <li data-search="avanzado restaurar fabrica reset valores">
+            <div class="cfg-row"><span class="cfg-main"><span>Restaurar configuración</span><span class="cfg-sub">Vuelve a los valores iniciales</span></span><button type="button" class="btn btn-danger btn-sm" data-confirm data-action="restore-all">Restaurar</button></div>
+          </li>
+          <li data-search="avanzado importar exportar configuracion respaldo copia archivo">
+            <div class="cfg-row"><span class="cfg-main"><span>Importar / Exportar</span><span class="cfg-sub">Copia local en JSON</span></span><span class="cfg-btns"><button type="button" class="btn btn-sm" id="btn-cfg-import">Importar</button><button type="button" class="btn btn-sm" id="btn-cfg-export">Exportar</button></span></div>
+          </li>
+        </ul>
+        <input type="file" id="cfg-import-file" accept="application/json" class="hidden" aria-label="Importar archivo de configuración">
+        <p class="note hidden" id="note-avanzado"></p>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">Acerca de</h2>
+        <ul class="stack">
+          <li>
+            <div class="row" data-od-id="about-version">
+              <span class="row-label">Versión</span>
+              <span class="row-value">0.2</span>
+            </div>
+          </li>
+          <li>
+            <div class="row" data-od-id="about-by">
+              <span class="row-label">Por</span>
+              <span class="row-value">ZIX Technology</span>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <div class="drawer-overlay" id="drawer-overlay" data-od-id="drawer-overlay"></div>
+  <aside class="drawer" id="drawer" data-od-id="drawer" aria-label="Menú" aria-hidden="true">
+    <div class="drawer-header">
+      <span class="brand">ZIX IA</span>
+      <button class="icon-btn" id="btn-drawer-close" data-od-id="btn-drawer-close" aria-label="Cerrar menú">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="drawer-group" data-od-id="drawer-modules">
+      <h2 class="section-title">Módulos</h2>
+      <ul class="stack">
+        <li>
+          <button class="row" data-open-view="view-modelos" data-od-id="drawer-mod-modelos">
+            <span class="row-main">
+              <span class="row-label">Modelos</span>
+              <span class="row-sub" data-model-sub>Aún no hay un modelo vinculado</span>
+            </span>
+            <span class="chev">›</span>
+          </button>
+        </li>
+        <li>
+          <button class="row" data-open-view="view-proveedores" data-od-id="drawer-mod-proveedores">
+            <span class="row-main">
+              <span class="row-label">Proveedores</span>
+              <span class="row-sub" data-provider-sub>Aún no hay un proveedor vinculado</span>
+            </span>
+            <span class="chev">›</span>
+          </button>
+        </li>
+        <li>
+          <button class="row" data-open-view="view-mcp" data-od-id="drawer-mod-mcp">
+            <span class="row-main">
+              <span class="row-label">MCPs</span>
+              <span class="row-sub">0 conectados</span>
+            </span>
+            <span class="chev">›</span>
+          </button>
+        </li>
+        <li>
+          <button class="row" data-open-view="view-comandos" data-od-id="drawer-mod-comandos">
+            <span class="row-main"><span class="row-label">Comandos</span></span>
+            <span class="chev">›</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+    <div class="drawer-group" data-od-id="drawer-system">
+      <h2 class="section-title">Sistema</h2>
+      <ul class="stack">
+        <li>
+          <button class="row" data-open-view="view-config" data-od-id="drawer-mod-config">
+            <span class="row-main"><span class="row-label">Configuración</span></span>
+            <span class="chev">›</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+  </aside>
+
+  <div class="pmodal-overlay" id="pmodal-overlay" data-od-id="pmodal-overlay"></div>
+  <div class="pmodal" id="pmodal" data-od-id="pmodal" role="dialog" aria-modal="true" aria-labelledby="pmodal-title" aria-hidden="true">
+    <div class="pmodal-header">
+      <h2 class="pmodal-title" id="pmodal-title">Agregar proveedor</h2>
+      <button class="icon-btn" id="btn-pmodal-close" data-od-id="btn-pmodal-close" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <p class="pmodal-sub">Elige cómo conectar la nueva fuente de modelos.</p>
+
+    <div id="pstep-options" data-od-id="pstep-options">
+      <div class="opt-grid">
+        <button type="button" class="opt-btn" data-prov-opt="api" data-od-id="opt-api">
+          <span class="opt-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l-4 3 4 3"></path><path d="M16 9l4 3-4 3"></path></svg>
+          </span>
+          <strong>Agregar API</strong>
+          <small>Clave y datos del proveedor</small>
+        </button>
+        <button type="button" class="opt-btn" data-prov-opt="local" data-od-id="opt-local">
+          <span class="opt-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="12" rx="2"></rect><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="16" x2="12" y2="20"></line></svg>
+          </span>
+          <strong>Modelo local</strong>
+          <small>Servidor en tu PC</small>
+        </button>
+      </div>
+    </div>
+
+    <form id="pform-api" data-od-id="pform-api" class="hidden" novalidate>
+      <div class="field">
+        <label for="api-nombre">Nombre del proveedor</label>
+        <input class="input" id="api-nombre" type="text" placeholder="Mi proveedor" autocomplete="off" aria-describedby="api-nombre-err">
+        <p class="field-err hidden" id="api-nombre-err">Escribe un nombre.</p>
+      </div>
+      <div class="field">
+        <label for="api-clave">API Key</label>
+        <input class="input" id="api-clave" type="password" placeholder="sk-…" autocomplete="off" aria-describedby="api-clave-err">
+        <p class="field-err hidden" id="api-clave-err">Escribe tu clave.</p>
+      </div>
+      <div class="field">
+        <label for="api-modelo">Modelo</label>
+        <input class="input" id="api-modelo" type="text" placeholder="gpt-4o" autocomplete="off" aria-describedby="api-modelo-err">
+        <p class="field-err hidden" id="api-modelo-err">Escribe el modelo.</p>
+      </div>
+      <div class="field">
+        <label for="api-endpoint">Endpoint base <span class="opt-hint">(opcional)</span></label>
+        <input class="input" id="api-endpoint" type="text" inputmode="url" placeholder="https://…" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <button type="button" class="btn" data-pback>Volver</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+
+    <form id="pform-local" data-od-id="pform-local" class="hidden" novalidate>
+      <div class="field">
+        <label for="local-nombre">Nombre del modelo</label>
+        <input class="input" id="local-nombre" type="text" placeholder="Mi modelo local" autocomplete="off" aria-describedby="local-nombre-err">
+        <p class="field-err hidden" id="local-nombre-err">Escribe un nombre.</p>
+      </div>
+      <div class="field">
+        <label for="local-endpoint">Servidor o endpoint local</label>
+        <input class="input" id="local-endpoint" type="text" inputmode="url" placeholder="http://localhost:11434" autocomplete="off" aria-describedby="local-endpoint-err">
+        <p class="field-err hidden" id="local-endpoint-err">Escribe una URL válida (http://…).</p>
+      </div>
+      <div class="field">
+        <label for="local-clave">Clave <span class="opt-hint">(opcional)</span></label>
+        <input class="input" id="local-clave" type="password" placeholder="Solo si tu servidor la pide" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <button type="button" class="btn" data-pback>Volver</button>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+      </div>
+    </form>
+
+    <p class="note" id="pmodal-note">La verificación real con el proveedor se activará al conectar el servicio.</p>
+  </div>
+
+  <div class="pmodal-overlay" id="mcp-modal-overlay" data-od-id="mcp-modal-overlay"></div>
+  <div class="pmodal" id="mcp-modal" data-od-id="mcp-modal" role="dialog" aria-modal="true" aria-labelledby="mcp-modal-title" aria-hidden="true">
+    <div class="pmodal-header">
+      <h2 class="pmodal-title" id="mcp-modal-title">Agregar servidor MCP</h2>
+      <button class="icon-btn" id="btn-mcp-modal-close" data-od-id="btn-mcp-modal-close" aria-label="Cerrar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <p class="pmodal-sub">Pega el JSON de configuración. ZIX detecta los datos automáticamente.</p>
+    <div id="mcp-json-state" data-od-id="mcp-json-state">
+      <div class="field">
+        <label for="mcp-json">Configuración JSON</label>
+        <textarea class="input json-area" id="mcp-json" placeholder='{"mcpServers": {"mi-servidor": {"command": "npx", "args": ["-y", "mi-mcp"], "env": {}}}}' spellcheck="false" autocomplete="off" aria-describedby="mcp-json-err"></textarea>
+        <p class="field-err hidden" id="mcp-json-err"></p>
+      </div>
+      <div class="preview-box hidden" id="mcp-preview-box" data-od-id="mcp-preview-box"></div>
+      <div class="form-row">
+        <button type="button" class="btn" id="btn-mcp-validate" data-od-id="btn-mcp-validate">Validar</button>
+        <button type="button" class="btn btn-primary" id="btn-mcp-integrate" data-od-id="btn-mcp-integrate" disabled>Integrar</button>
+      </div>
+    </div>
+    <div id="mcp-progress-state" class="hidden" data-od-id="mcp-progress-state">
+      <ol class="steps" id="mcp-json-steps" data-od-id="mcp-json-steps">
+        <li class="step" data-step="0"><span class="step-dot"></span><span>Preparando</span></li>
+        <li class="step" data-step="1"><span class="step-dot"></span><span>Instalando</span></li>
+        <li class="step" data-step="2"><span class="step-dot"></span><span>Conectando</span></li>
+        <li class="step" data-step="3"><span class="step-dot"></span><span>Listo</span></li>
+      </ol>
+    </div>
+    <p class="note">La conexión real se activará al conectar el servicio.</p>
+  </div>
+
+  <div class="loading-overlay" id="loading-overlay" data-od-id="loading-overlay" aria-hidden="true">
+    <div class="loading-pill">
+      <span class="spinner"></span>
+      <span id="loading-text">Preparando conversación…</span>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var HUB = 'view-hub';
+
+      function storeGet(k, fb) {
+        var v = null;
+        try { v = localStorage.getItem(k); } catch (_) {}
+        return v === null ? fb : v;
+      }
+      function storeSet(k, v) {
+        try { localStorage.setItem(k, v); } catch (_) {}
+      }
+
+      // ─── Router de vistas (módulos independientes, Home intacto) ──
+      var views = Array.prototype.slice.call(document.querySelectorAll('.view'));
+      function showView(id) {
+        views.forEach(function (v) { v.classList.toggle('active', v.id === id); });
+        window.scrollTo(0, 0);
+      }
+      document.querySelectorAll('[data-open-view]').forEach(function (b) {
+        b.addEventListener('click', function () { showView(b.getAttribute('data-open-view')); });
+      });
+      document.querySelectorAll('[data-back]').forEach(function (b) {
+        b.addEventListener('click', function () { showView(HUB); });
+      });
+
+      // ─── Drawer (módulos + configuración) ────────────────────
+      var drawer = document.getElementById('drawer');
+      var drawerOverlay = document.getElementById('drawer-overlay');
+      var btnMenu = document.getElementById('btn-menu');
+      var btnDrawerClose = document.getElementById('btn-drawer-close');
+      function openDrawer() {
+        drawer.classList.add('open');
+        drawer.setAttribute('aria-hidden', 'false');
+        drawerOverlay.classList.add('open');
+        btnMenu.setAttribute('aria-expanded', 'true');
+        btnDrawerClose.focus();
+      }
+      function closeDrawer() {
+        drawer.classList.remove('open');
+        drawer.setAttribute('aria-hidden', 'true');
+        drawerOverlay.classList.remove('open');
+        btnMenu.setAttribute('aria-expanded', 'false');
+      }
+      btnMenu.addEventListener('click', openDrawer);
+      btnDrawerClose.addEventListener('click', closeDrawer);
+      drawerOverlay.addEventListener('click', closeDrawer);
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
+      });
+      document.querySelectorAll('#drawer [data-open-view]').forEach(function (b) {
+        b.addEventListener('click', closeDrawer);
+      });
+
+      // ─── Tema (misma clave que el resto de la app) ───────────────
+      var themeSegs = Array.prototype.slice.call(document.querySelectorAll('#theme-group .theme-seg'));
+      var sysMedia = window.matchMedia('(prefers-color-scheme: dark)');
+      function effectiveTheme(mode) {
+        if (mode === 'dark') return 'dark';
+        if (mode === 'light') return 'light';
+        return sysMedia.matches ? 'dark' : 'light';
+      }
+      var themeAnimT = 0;
+      var themeStarted = false;
+      function pulseThemeAnim() {
+        var root = document.documentElement;
+        root.classList.remove('theme-anim');
+        void root.offsetWidth;
+        root.classList.add('theme-anim');
+        clearTimeout(themeAnimT);
+        themeAnimT = setTimeout(function () { root.classList.remove('theme-anim'); }, 550);
+      }
+      function applyThemeMode(mode) {
+        var next = effectiveTheme(mode);
+        if (themeStarted && document.documentElement.getAttribute('data-theme') !== next) pulseThemeAnim();
+        document.documentElement.setAttribute('data-theme', next);
+        themeSegs.forEach(function (b) { b.setAttribute('aria-checked', String(b.getAttribute('data-theme-value') === mode)); });
+        storeSet('zix-theme', mode);
+        themeStarted = true;
+      }
+      function readThemeMode() {
+        var saved = storeGet('zix-theme', 'system');
+        return (saved === 'dark' || saved === 'light' || saved === 'system') ? saved : 'system';
+      }
+      themeSegs.forEach(function (b) { b.addEventListener('click', function () { applyThemeMode(b.getAttribute('data-theme-value')); }); });
+      try {
+        var onSysChange = function () { if (readThemeMode() === 'system') applyThemeMode('system'); };
+        if (sysMedia.addEventListener) sysMedia.addEventListener('change', onSysChange);
+        else if (sysMedia.addListener) sysMedia.addListener(onSysChange);
+      } catch (_) {}
+      applyThemeMode(readThemeMode());
+
+      // ─── Estado global compartido (zix-model / zix-provider) ─────
+      // Estado global compartido (zix-model / zix-provider). Sin modelo ni
+      // proveedor reales no se inventa ninguno: se muestra el estado vacío.
+      var MODEL_VACIO = 'Aún no hay un modelo vinculado';
+      var PROVIDER_VACIO = 'Aún no hay un proveedor vinculado';
+      function readModel() {
+        var m = storeGet('zix-model', '');
+        return m || '';
+      }
+      function syncModelLabels() {
+        var m = readModel();
+        var p = readProvider();
+        document.querySelectorAll('[data-model-sub]').forEach(function (el) {
+          el.textContent = m ? (p ? m + ' · ' + p : m) : MODEL_VACIO;
+        });
+      }
+      document.querySelectorAll('input[name="zix-model"]').forEach(function (r) {
+        if (r.value === readModel()) r.checked = true;
+        r.closest('.model-option').classList.toggle('selected', r.checked);
+        r.addEventListener('change', function () {
+          document.querySelectorAll('.model-option').forEach(function (l) {
+            var rr = l.querySelector('input[name="zix-model"]');
+            l.classList.toggle('selected', !!(rr && rr.checked));
+          });
+          storeSet('zix-model', r.value);
+          syncModelLabels();
+        });
+      });
+      syncModelLabels();
+
+      // ─── Estado de conexión ──────────────────────────────────────
+      var homeStatus = document.getElementById('home-status');
+      var homeStatusText = document.getElementById('home-status-text');
+      var conexionValue = document.getElementById('state-conexion-value');
+      function setOnline(online) {
+        homeStatus.classList.toggle('is-off', !online);
+        homeStatusText.textContent = online ? 'Conectado' : 'Sin conexión';
+        conexionValue.textContent = online ? 'Conectado' : 'Sin conexión';
+        conexionValue.classList.toggle('ok', online);
+      }
+      window.addEventListener('offline', function () { setOnline(false); });
+      window.addEventListener('online', function () { setOnline(true); });
+      setOnline(navigator.onLine !== false);
+
+      // ─── Home → Chat (carga breve + contexto por sessionStorage) ─
+      // Destino del flujo aprobado: HOME -> CHAT. Solo se navega cuando la
+      // pantalla existe de verdad: no se crean placeholders para tapar un 404.
+      // Chat ya está implementado (zix-main.html), así que "Nueva conversación"
+      // queda habilitado y abre el Chat con sessionStorage 'zix-chat-mode'.
+      var PANTALLAS = { chat: 'zix-main.html' };
+      var PANTALLAS_IMPLEMENTADAS = ['zix-main.html'];
+      function screenReady(file) {
+        return PANTALLAS_IMPLEMENTADAS.indexOf(file) !== -1;
+      }
+      function markChatPending(el) {
+        el.setAttribute('aria-disabled', 'true');
+        el.dataset.pendiente = PANTALLAS.chat;
+      }
+
+      var overlay = document.getElementById('loading-overlay');
+      var loadingText = document.getElementById('loading-text');
+      var loadTimer = 0;
+      function openChat(mode, label) {
+        if (!screenReady(PANTALLAS.chat)) return;
+        try { sessionStorage.setItem('zix-chat-mode', mode); } catch (_) {}
+        loadingText.textContent = label || 'Preparando conversación…';
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+        clearTimeout(loadTimer);
+        loadTimer = setTimeout(function () {
+          document.body.classList.add('page-out');
+          setTimeout(function () { window.location.href = PANTALLAS.chat; }, 200);
+        }, 900);
+      }
+      if (!screenReady(PANTALLAS.chat)) {
+        markChatPending(document.getElementById('btn-new-chat'));
+        document.querySelectorAll('[data-open-chat]').forEach(markChatPending);
+      }
+      document.getElementById('btn-new-chat').addEventListener('click', function () {
+        openChat('new', 'Preparando conversación…');
+      });
+      document.querySelectorAll('[data-open-chat]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          openChat(b.getAttribute('data-open-chat'), 'Abriendo conversación…');
+        });
+      });
+      // ─── Proveedores: alta y selección (verificación pendiente) ─
+      var providerList = document.getElementById('provider-list');
+      var pmodal = document.getElementById('pmodal');
+      var pmodalOverlay = document.getElementById('pmodal-overlay');
+      var btnAddProvider = document.getElementById('btn-add-provider');
+      var btnPmodalClose = document.getElementById('btn-pmodal-close');
+      var pstepOptions = document.getElementById('pstep-options');
+      var pformApi = document.getElementById('pform-api');
+      var pformLocal = document.getElementById('pform-local');
+      var lastFocus = null;
+
+      function readCustomProviders() {
+        try {
+          var raw = localStorage.getItem('zix-providers-custom');
+          var list = raw ? JSON.parse(raw) : [];
+          return Array.isArray(list) ? list : [];
+        } catch (_) { return []; }
+      }
+      function saveCustomProviders(list) {
+        try { localStorage.setItem('zix-providers-custom', JSON.stringify(list)); } catch (_) {}
+      }
+      function readProvider() {
+        var p = null;
+        try { p = localStorage.getItem('zix-provider'); } catch (_) {}
+        return p || '';
+      }
+      function syncProviderLabels() {
+        var label = readProvider();
+        document.querySelectorAll('[data-provider-sub]').forEach(function (el) {
+          el.textContent = label ? label + ' · Activo' : PROVIDER_VACIO;
+        });
+      }
+      function verifyProvider(p) {
+        // Backend pendiente: aquí se comprobará la clave o el endpoint
+        // contra el proveedor antes de marcarlo como verificado.
+        return false;
+      }
+      function esc(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+      function renderProviders() {
+        providerList.querySelectorAll('[data-custom]').forEach(function (li) { li.remove(); });
+        readCustomProviders().forEach(function (p) {
+          var li = document.createElement('li');
+          li.setAttribute('data-custom', p.id);
+          li.innerHTML =
+            '<label class="prov-option">' +
+              '<input type="radio" name="zix-provider" value="' + esc(p.name) + '" disabled>' +
+              '<span class="model-radio"></span>' +
+              '<span class="row-main">' +
+                '<span class="row-label">' + esc(p.name) + '</span>' +
+                '<span class="row-sub">' + esc(p.model) + '</span>' +
+              '</span>' +
+              '<span class="badge-pending">Pendiente</span>' +
+              '<button type="button" class="prov-remove" data-remove="' + esc(p.id) + '" aria-label="Quitar ' + esc(p.name) + '">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' +
+              '</button>' +
+            '</label>';
+          providerList.appendChild(li);
+        });
+        // Estado vacío honesto: sin proveedores reales no hay nada que listar.
+        var providerEmptyEl = document.getElementById('provider-empty');
+        if (providerEmptyEl) {
+          providerEmptyEl.classList.toggle('hidden', providerList.children.length > 0);
+        }
+      }
+      function showPstep(which) {
+        pstepOptions.classList.toggle('hidden', which !== 'options');
+        pformApi.classList.toggle('hidden', which !== 'api');
+        pformLocal.classList.toggle('hidden', which !== 'local');
+        document.querySelectorAll('[data-prov-opt]').forEach(function (b) {
+          b.classList.toggle('selected', b.getAttribute('data-prov-opt') === which);
+        });
+      }
+      function openPmodal() {
+        lastFocus = document.activeElement;
+        showPstep('options');
+        pmodal.classList.add('open');
+        pmodal.setAttribute('aria-hidden', 'false');
+        pmodalOverlay.classList.add('open');
+        btnPmodalClose.focus();
+      }
+      function closePmodal() {
+        pmodal.classList.remove('open');
+        pmodal.setAttribute('aria-hidden', 'true');
+        pmodalOverlay.classList.remove('open');
+        if (lastFocus && lastFocus.focus) lastFocus.focus();
+      }
+      btnAddProvider.addEventListener('click', openPmodal);
+      btnPmodalClose.addEventListener('click', closePmodal);
+      pmodalOverlay.addEventListener('click', closePmodal);
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape' && pmodal.classList.contains('open')) closePmodal();
+      });
+      document.querySelectorAll('[data-prov-opt]').forEach(function (b) {
+        b.addEventListener('click', function () { showPstep(b.getAttribute('data-prov-opt')); });
+      });
+      document.querySelectorAll('[data-pback]').forEach(function (b) {
+        b.addEventListener('click', function () { showPstep('options'); });
+      });
+      function fieldError(input, on) {
+        input.setAttribute('aria-invalid', String(on));
+        var err = document.getElementById(input.getAttribute('aria-describedby'));
+        if (err) err.classList.toggle('hidden', !on);
+      }
+      function validEndpoint(v) {
+        return /^(https?:\/\/)[^\s/$.?#].[^\s]*$/i.test(v.trim());
+      }
+      function addProvider(p) {
+        var list = readCustomProviders();
+        list.push(p);
+        saveCustomProviders(list);
+        renderProviders();
+      }
+      pformApi.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var name = document.getElementById('api-nombre');
+        var key = document.getElementById('api-clave');
+        var model = document.getElementById('api-modelo');
+        var ok = true;
+        [[name, name.value.trim() !== ''], [key, key.value.trim() !== ''], [model, model.value.trim() !== '']].forEach(function (pair) {
+          fieldError(pair[0], !pair[1]);
+          if (!pair[1]) ok = false;
+        });
+        if (!ok) return;
+        var endpoint = document.getElementById('api-endpoint').value.trim();
+        addProvider({ id: 'api-' + Date.now(), kind: 'api', name: name.value.trim(), model: model.value.trim(), endpoint: endpoint, status: 'pending', verified: verifyProvider({}) });
+        pformApi.reset();
+        closePmodal();
+      });
+      pformLocal.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var name = document.getElementById('local-nombre');
+        var endpoint = document.getElementById('local-endpoint');
+        var okName = name.value.trim() !== '';
+        var okEndpoint = validEndpoint(endpoint.value);
+        fieldError(name, !okName);
+        fieldError(endpoint, !okEndpoint);
+        if (!okName || !okEndpoint) return;
+        addProvider({ id: 'local-' + Date.now(), kind: 'local', name: name.value.trim(), model: name.value.trim(), endpoint: endpoint.value.trim(), status: 'pending', verified: false });
+        pformLocal.reset();
+        closePmodal();
+      });
+      providerList.addEventListener('click', function (ev) {
+        var btn = ev.target.closest('[data-remove]');
+        if (!btn) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        var id = btn.getAttribute('data-remove');
+        saveCustomProviders(readCustomProviders().filter(function (p) { return p.id !== id; }));
+        renderProviders();
+      });
+      providerList.addEventListener('change', function (ev) {
+        var r = ev.target;
+        if (!r || r.name !== 'zix-provider' || r.disabled) return;
+        document.querySelectorAll('.prov-option').forEach(function (l) {
+          var rr = l.querySelector('input[name="zix-provider"]');
+          l.classList.toggle('selected', !!(rr && rr.checked));
+        });
+        try { localStorage.setItem('zix-provider', r.value); } catch (_) {}
+        syncProviderLabels();
+      });
+      (function initProviderSelection() {
+        var current = readProvider();
+        var hit = providerList.querySelector('input[name="zix-provider"][value="' + current + '"]');
+        if (hit && !hit.disabled) hit.checked = true;
+        document.querySelectorAll('.prov-option').forEach(function (l) {
+          var rr = l.querySelector('input[name="zix-provider"]');
+          l.classList.toggle('selected', !!(rr && rr.checked));
+        });
+        syncProviderLabels();
+      })();
+      renderProviders();
+      // ─── MCP: servidores, hub, integración y reinicio ─────────
+      // Estado local en localStorage. La instalación, verificación y
+      // conexión reales son backend pendiente (ver connectMcpServer).
+      //
+      // Sobre los paquetes, verificados contra el repositorio oficial
+      // modelcontextprotocol/servers y contra npm:
+      //   - filesystem/github/postgres existen como servidores de referencia.
+      //   - Playwright NO usa @modelcontextprotocol/server-playwright (no
+      //     existe): el oficial es @playwright/mcp de Microsoft.
+      //   - GitHub exige GITHUB_PERSONAL_ACCESS_TOKEN (no GITHUB_TOKEN).
+      //   - PostgreSQL recibe la URL como argumento posicional, no por env.
+      //   - ZIX corre en Windows: los comandos npx llevan el envoltorio
+      //     `cmd /c npx`, tal como indica el README oficial.
+      //
+      // El Hub dinámico (MCP Registry → backend de ZIX → Hub) queda como
+      // bloque futuro: aquí solo hay un catálogo estático y correcto.
+      var MCP_HUB = [
+        { id: 'filesystem', name: 'Filesystem', desc: 'Accede a tus archivos y carpetas desde ZIX.', use: 'leer documentos y guardar resultados', tools: ['Leer archivos', 'Escribir archivos'],
+          config: { name: 'Filesystem', command: 'cmd', args: ['/c', 'npx', '-y', '@modelcontextprotocol/server-filesystem', '~/Documentos'], env: {}, description: 'Accede a tus archivos y carpetas desde ZIX.', tools: ['Leer archivos', 'Escribir archivos'] } },
+        { id: 'github', name: 'GitHub', desc: 'Conecta tus repositorios con ZIX.', use: 'revisar código, issues y pull requests', tools: ['Repos', 'Issues', 'Pull requests'],
+          config: { name: 'GitHub', command: 'cmd', args: ['/c', 'npx', '-y', '@modelcontextprotocol/server-github'], env: { GITHUB_PERSONAL_ACCESS_TOKEN: '' }, description: 'Conecta tus repositorios con ZIX.', tools: ['Repos', 'Issues', 'Pull requests'] } },
+        { id: 'postgres', name: 'PostgreSQL', desc: 'Consulta tus bases de datos desde ZIX.', use: 'responder preguntas con datos reales', tools: ['Consultas SQL', 'Esquemas'],
+          config: { name: 'PostgreSQL', command: 'cmd', args: ['/c', 'npx', '-y', '@modelcontextprotocol/server-postgres', 'postgresql://localhost/mydb'], env: {}, description: 'Consulta tus bases de datos desde ZIX.', tools: ['Consultas SQL', 'Esquemas'] } },
+        { id: 'playwright', name: 'Playwright', desc: 'Automatiza el navegador desde ZIX.', use: 'revisar páginas y extraer información', tools: ['Navegar', 'Extraer texto'],
+          config: { name: 'Playwright', command: 'cmd', args: ['/c', 'npx', '-y', '@playwright/mcp'], env: {}, description: 'Automatiza el navegador desde ZIX.', tools: ['Navegar', 'Extraer texto'] } }
+      ];
+      var mcpListEl = document.getElementById('mcp-server-list');
+      var mcpEmptyEl = document.getElementById('mcp-empty');
+      var restartBoxEl = document.getElementById('mcp-restart-box');
+      var mcpModal = document.getElementById('mcp-modal');
+      var mcpModalOverlay = document.getElementById('mcp-modal-overlay');
+      var mcpJson = document.getElementById('mcp-json');
+      var mcpJsonErr = document.getElementById('mcp-json-err');
+      var mcpJsonState = document.getElementById('mcp-json-state');
+      var mcpPreviewBox = document.getElementById('mcp-preview-box');
+      var mcpProgressState = document.getElementById('mcp-progress-state');
+      var mcpJsonSteps = Array.prototype.slice.call(document.querySelectorAll('#mcp-json-steps .step'));
+      var btnValidate = document.getElementById('btn-mcp-validate');
+      var btnIntegrate = document.getElementById('btn-mcp-integrate');
+      var mcpLastFocus = null;
+      var flowTimers = [];
+      var parsedMcp = null;
+
+      function readMcpServers() {
+        try {
+          var raw = localStorage.getItem('zix-mcp-servers');
+          var list = raw ? JSON.parse(raw) : [];
+          return Array.isArray(list) ? list : [];
+        } catch (_) { return []; }
+      }
+      function saveMcpServers(list) {
+        try { localStorage.setItem('zix-mcp-servers', JSON.stringify(list)); } catch (_) {}
+      }
+      function isMcpDirty() {
+        try { return localStorage.getItem('zix-mcp-dirty') === '1'; } catch (_) { return false; }
+      }
+      function setMcpDirty(on) {
+        try {
+          if (on) localStorage.setItem('zix-mcp-dirty', '1');
+          else localStorage.removeItem('zix-mcp-dirty');
+        } catch (_) {}
+        restartBoxEl.classList.toggle('hidden', !on);
+      }
+      function connectMcpServer(srv) {
+        // Backend pendiente: aquí se ejecutará el comando o se abrirá la
+        // conexión HTTP, se listarán sus herramientas y se marcará el
+        // estado real (conectado / error). Hoy siempre queda pendiente.
+        return false;
+      }
+      function escM(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+      }
+      function statusLabel(status) {
+        return status === 'connected' ? 'Conectado' : status === 'error' ? 'Error' : 'Desconectado';
+      }
+      function statusClass(status) {
+        return status === 'connected' ? 'on' : status === 'error' ? 'err' : 'off';
+      }
+      function renderMcpServers() {
+        var list = readMcpServers();
+        mcpListEl.innerHTML = '';
+        mcpEmptyEl.classList.toggle('hidden', list.length > 0);
+        list.forEach(function (srv) {
+          var li = document.createElement('li');
+          var tools = (srv.tools && srv.tools.length)
+            ? srv.tools.map(function (t) { return '<span class="tool-chip">' + escM(t) + '</span>'; }).join('')
+            : '<span class="muted">Sin herramientas (sin conexión)</span>';
+          li.innerHTML =
+            '<div class="mcp-card">' +
+              '<div class="mcp-card-head">' +
+                '<span class="mcp-name">' + escM(srv.name) + '</span>' +
+                '<span class="mcp-status ' + statusClass(srv.status) + '">' + statusLabel(srv.status) + '</span>' +
+              '</div>' +
+              (srv.desc ? '<p class="mcp-desc">' + escM(srv.desc) + '</p>' : '') +
+              '<div class="mcp-tools">' + tools + '</div>' +
+              '<div class="mcp-actions">' +
+                '<button type="button" class="btn btn-sm" data-mcp-del="' + escM(srv.id) + '">Eliminar</button>' +
+              '</div>' +
+            '</div>';
+          mcpListEl.appendChild(li);
+        });
+      }
+      // Pestañas Servidores / Hub
+      document.querySelectorAll('[data-mcp-tab]').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          switchMcpTab(tab.getAttribute('data-mcp-tab'));
+        });
+      });
+      // Modal JSON: abrir, cerrar y restablecer
+      function resetJsonModal(prefill) {
+        if (typeof prefill === 'string') mcpJson.value = prefill;
+        mcpJsonErr.classList.add('hidden');
+        mcpJsonErr.textContent = '';
+        mcpJson.setAttribute('aria-invalid', 'false');
+        mcpPreviewBox.classList.add('hidden');
+        mcpPreviewBox.innerHTML = '';
+        btnIntegrate.disabled = true;
+        parsedMcp = null;
+        mcpProgressState.classList.add('hidden');
+        mcpJsonState.classList.remove('hidden');
+        resetJsonSteps();
+      }
+      function clearFlowTimers() {
+        flowTimers.forEach(clearTimeout);
+        flowTimers = [];
+      }
+      function openMcpModal() {
+        mcpLastFocus = document.activeElement;
+        mcpModal.classList.add('open');
+        mcpModal.setAttribute('aria-hidden', 'false');
+        mcpModalOverlay.classList.add('open');
+        document.getElementById('btn-mcp-modal-close').focus();
+      }
+      function closeMcpModal() {
+        clearFlowTimers();
+        mcpModal.classList.remove('open');
+        mcpModal.setAttribute('aria-hidden', 'true');
+        mcpModalOverlay.classList.remove('open');
+        if (mcpLastFocus && mcpLastFocus.focus) mcpLastFocus.focus();
+      }
+      document.getElementById('btn-add-mcp').addEventListener('click', function () {
+        resetJsonModal('');
+        mcpJson.focus();
+        openMcpModal();
+      });
+      document.getElementById('btn-mcp-modal-close').addEventListener('click', closeMcpModal);
+      mcpModalOverlay.addEventListener('click', closeMcpModal);
+      document.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Escape' && mcpModal.classList.contains('open')) closeMcpModal();
+      });
+      // Validar: comprueba el JSON y muestra la vista previa detectada
+      function validateMcpJson(text) {
+        var errors = [];
+        var obj = null;
+        try {
+          obj = JSON.parse(text);
+        } catch (e) {
+          var msg = 'Revisa el JSON: no es válido.';
+          var at = /position (\d+)/.exec(String((e && e.message) || ''));
+          if (at) msg += ' (cerca del carácter ' + at[1] + ')';
+          return { ok: false, errors: [msg], data: null };
+        }
+        if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+          return { ok: false, errors: ['El JSON debe ser un objeto.'], data: null };
+        }
+        var name = null;
+        var entry = null;
+        if (obj.mcpServers && typeof obj.mcpServers === 'object' && !Array.isArray(obj.mcpServers)) {
+          var keys = Object.keys(obj.mcpServers);
+          if (!keys.length) {
+            errors.push('«mcpServers» está vacío.');
+          } else if (keys.length > 1) {
+            errors.push('Detecté ' + keys.length + ' servidores; pega solo uno por vez.');
+          } else {
+            name = keys[0];
+            entry = obj.mcpServers[name] || {};
+          }
+        } else {
+          name = obj.name;
+          entry = obj;
+        }
+        if (errors.length) return { ok: false, errors: errors, data: null };
+        if (!name || !String(name).trim()) errors.push('Falta el nombre del servidor.');
+        var command = entry && entry.command;
+        var url = entry && entry.url;
+        var args = (entry && entry.args) || [];
+        var env = (entry && entry.env) || {};
+        if ((!command || !String(command).trim()) && (!url || !String(url).trim())) {
+          errors.push('Falta «command» o «url».');
+        }
+        if (!Array.isArray(args)) errors.push('«args» debe ser una lista.');
+        if (!env || typeof env !== 'object' || Array.isArray(env)) {
+          errors.push('«env» debe ser un objeto.');
+        } else {
+          Object.keys(env).forEach(function (k) {
+            var v = env[k];
+            if (v === null || v === undefined || String(v).trim() === '' || /TU_|AQUI|…|\.\.\.|XXX|TODO|CHANGEME/i.test(String(v))) {
+              errors.push('Completa el valor de «' + k + '».');
+            }
+          });
+        }
+        if (errors.length) return { ok: false, errors: errors, data: null };
+        return { ok: true, errors: [], data: {
+          name: String(name).trim(),
+          type: (url && String(url).trim()) ? 'http' : 'stdio',
+          command: command ? String(command).trim() : '',
+          url: url ? String(url).trim() : '',
+          args: args.map(String),
+          env: env,
+          description: (entry && entry.description) || obj.description || '',
+          tools: Array.isArray((entry && entry.tools) || obj.tools) ? ((entry && entry.tools) || obj.tools).map(String) : []
+        } };
+      }
+      function renderPreview(d) {
+        function row(k, v) {
+          return '<div class="preview-row"><span class="pv-k">' + k + '</span><span class="pv-v">' + escM(v) + '</span></div>';
+        }
+        var main = d.type === 'http' ? d.url : (d.command + (d.args.length ? ' ' + d.args.join(' ') : ''));
+        var envKeys = Object.keys(d.env || {});
+        var html = row('Nombre', d.name)
+          + row('Tipo', d.type === 'http' ? 'HTTP remoto' : 'Comando local')
+          + row(d.type === 'http' ? 'URL' : 'Comando', main)
+          + row('Variables', envKeys.length ? envKeys.length + ' configuradas' : '—');
+        if (d.description) html += row('Descripción', d.description);
+        mcpPreviewBox.innerHTML = html;
+      }
+      function doValidate() {
+        var res = validateMcpJson(mcpJson.value);
+        if (!res.ok) {
+          mcpJsonErr.textContent = res.errors.join(' ');
+          mcpJsonErr.classList.remove('hidden');
+          mcpJson.setAttribute('aria-invalid', 'true');
+          mcpPreviewBox.classList.add('hidden');
+          btnIntegrate.disabled = true;
+          parsedMcp = null;
+          return false;
+        }
+        mcpJsonErr.classList.add('hidden');
+        mcpJson.setAttribute('aria-invalid', 'false');
+        parsedMcp = res.data;
+        renderPreview(res.data);
+        mcpPreviewBox.classList.remove('hidden');
+        btnIntegrate.disabled = false;
+        return true;
+      }
+      btnValidate.addEventListener('click', doValidate);
+      mcpJson.addEventListener('input', function () {
+        btnIntegrate.disabled = true;
+        parsedMcp = null;
+        mcpPreviewBox.classList.add('hidden');
+        mcpJsonErr.classList.add('hidden');
+        mcpJson.setAttribute('aria-invalid', 'false');
+      });
+      btnIntegrate.addEventListener('click', function () {
+        if (!parsedMcp && !doValidate()) return;
+        mcpJsonState.classList.add('hidden');
+        mcpProgressState.classList.remove('hidden');
+        resetJsonSteps();
+        runJsonProgress();
+      });
+      mcpListEl.addEventListener('click', function (ev) {
+        var btn = ev.target.closest('[data-mcp-del]');
+        if (!btn) return;
+        var id = btn.getAttribute('data-mcp-del');
+        saveMcpServers(readMcpServers().filter(function (s) { return s.id !== id; }));
+        setMcpDirty(true);
+        renderMcpServers();
+      });
+      // Progreso de integración (dentro del mismo modal)
+      function setJsonStep(i, state) {
+        var li = mcpJsonSteps[i];
+        if (!li) return;
+        li.classList.remove('active', 'done');
+        if (state) li.classList.add(state);
+      }
+      function resetJsonSteps() {
+        mcpJsonSteps.forEach(function (li) { li.classList.remove('active', 'done'); });
+      }
+      function switchMcpTab(target) {
+        document.querySelectorAll('[data-mcp-tab]').forEach(function (t) {
+          t.setAttribute('aria-selected', String(t.getAttribute('data-mcp-tab') === target));
+        });
+        document.getElementById('mcp-tab-servers').classList.toggle('hidden', target !== 'servers');
+        document.getElementById('mcp-tab-hub').classList.toggle('hidden', target !== 'hub');
+      }
+      function runJsonProgress() {
+        resetJsonSteps();
+        var i = 0;
+        (function next() {
+          if (i > 0) setJsonStep(i - 1, 'done');
+          if (i > 3) {
+            finishJsonIntegration();
+            return;
+          }
+          setJsonStep(i, 'active');
+          i++;
+          flowTimers.push(setTimeout(next, 650));
+        })();
+      }
+      function finishJsonIntegration() {
+        var d = parsedMcp;
+        if (!d) {
+          mcpProgressState.classList.add('hidden');
+          mcpJsonState.classList.remove('hidden');
+          return;
+        }
+        var srv = {
+          id: 'mcp-' + Date.now(),
+          name: d.name,
+          kind: d.type,
+          command: d.command,
+          url: d.url,
+          args: d.args,
+          env: d.env,
+          desc: d.description,
+          tools: d.tools,
+          status: 'disconnected'
+        };
+        srv.verified = connectMcpServer(srv);
+        var list = readMcpServers();
+        list.push(srv);
+        saveMcpServers(list);
+        setMcpDirty(true);
+        renderMcpServers();
+        closeMcpModal();
+        switchMcpTab('servers');
+      }
+      document.querySelectorAll('[data-integrate]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var item = null;
+          for (var i = 0; i < MCP_HUB.length; i++) {
+            if (MCP_HUB[i].id === b.getAttribute('data-integrate')) item = MCP_HUB[i];
+          }
+          if (!item) return;
+          resetJsonModal(JSON.stringify(item.config, null, 2));
+          openMcpModal();
+          doValidate();
+        });
+      });
+      // Reiniciar ZIX para cargar los MCP
+      document.getElementById('btn-restart-zix').addEventListener('click', function () {
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+        loadingText.textContent = 'Reiniciando ZIX para cargar los MCP…';
+        setTimeout(function () {
+          try { localStorage.removeItem('zix-mcp-dirty'); } catch (_) {}
+          window.location.reload();
+        }, 1200);
+      });
+      renderMcpServers();
+      setMcpDirty(isMcpDirty());
+      // ─── Configuración completa (persistencia local) ─────────
+      // Los controles guardan su estado en 'zix-settings'. Los que
+      // requieran backend real lo indican con notas honestas.
+      var SETTINGS_KEY = 'zix-settings';
+      function readSettings() {
+        try {
+          var raw = localStorage.getItem(SETTINGS_KEY);
+          var obj = raw ? JSON.parse(raw) : {};
+          return (obj && typeof obj === 'object') ? obj : {};
+        } catch (_) { return {}; }
+      }
+      function saveSettings(obj) {
+        try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(obj)); } catch (_) {}
+      }
+      var cfgStore = readSettings();
+      function cfgGet(key, fb) {
+        return (key in cfgStore) ? cfgStore[key] : fb;
+      }
+      // Interruptores
+      document.querySelectorAll('.cfg-switch[data-setting]').forEach(function (sw) {
+        var key = sw.getAttribute('data-setting');
+        var initial = sw.getAttribute('aria-checked') === 'true';
+        sw.setAttribute('aria-checked', String(!!cfgGet(key, initial)));
+        sw.addEventListener('click', function () {
+          var next = sw.getAttribute('aria-checked') !== 'true';
+          sw.setAttribute('aria-checked', String(next));
+          cfgStore[key] = next;
+          saveSettings(cfgStore);
+        });
+      });
+      // Selectores
+      document.querySelectorAll('.cfg-select[data-setting]').forEach(function (sel) {
+        var key = sel.getAttribute('data-setting');
+        var saved = cfgGet(key, null);
+        if (saved !== null) {
+          for (var i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].value === String(saved)) { sel.selectedIndex = i; break; }
+          }
+        }
+        sel.addEventListener('change', function () {
+          cfgStore[key] = sel.value;
+          saveSettings(cfgStore);
+        });
+      });
+      // Deslizadores con valor visible
+      document.querySelectorAll('.cfg-range[data-setting]').forEach(function (rg) {
+        var key = rg.getAttribute('data-setting');
+        var unit = rg.getAttribute('data-unit') || '';
+        var saved = cfgGet(key, null);
+        if (saved !== null && !isNaN(Number(saved))) rg.value = saved;
+        var out = document.getElementById('rv-' + key);
+        function paint() { if (out) out.textContent = rg.value + unit; }
+        paint();
+        rg.addEventListener('input', function () {
+          paint();
+          cfgStore[key] = Number(rg.value);
+          saveSettings(cfgStore);
+        });
+      });
+      // Buscador de ajustes
+      var cfgSearch = document.getElementById('cfg-search');
+      var cfgNoResults = document.getElementById('cfg-no-results');
+      cfgSearch.addEventListener('input', function () {
+        var q = cfgSearch.value.trim().toLowerCase();
+        var anyVisible = false;
+        document.querySelectorAll('#view-config .cfg-cat').forEach(function (sec) {
+          var visible = 0;
+          sec.querySelectorAll('li[data-search]').forEach(function (li) {
+            var hit = !q || (li.getAttribute('data-search') + ' ' + li.textContent.toLowerCase()).indexOf(q) !== -1;
+            li.classList.toggle('hidden', !hit);
+            if (hit) visible++;
+          });
+          sec.classList.toggle('hidden', visible === 0);
+          if (visible > 0) anyVisible = true;
+        });
+        cfgNoResults.classList.toggle('hidden', anyVisible);
+      });
+      // Botones peligrosos con doble confirmación
+      document.querySelectorAll('[data-confirm]').forEach(function (btn) {
+        var armedTimer = 0;
+        var orig = btn.textContent;
+        btn.addEventListener('click', function () {
+          if (!btn.classList.contains('armed')) {
+            btn.classList.add('armed');
+            btn.textContent = 'Toca de nuevo para confirmar';
+            clearTimeout(armedTimer);
+            armedTimer = setTimeout(function () {
+              btn.classList.remove('armed');
+              btn.textContent = orig;
+            }, 3000);
+            return;
+          }
+          clearTimeout(armedTimer);
+          btn.classList.remove('armed');
+          btn.textContent = orig;
+          var action = btn.getAttribute('data-action');
+          if (action === 'clear-memory') {
+            document.getElementById('note-memoria').classList.remove('hidden');
+          } else if (action === 'wipe-data') {
+            try {
+              localStorage.removeItem('zix-mcp-servers');
+              localStorage.removeItem('zix-providers-custom');
+              localStorage.removeItem('zix-mcp-dirty');
+            } catch (_) {}
+            renderMcpServers();
+            setMcpDirty(isMcpDirty());
+            document.getElementById('note-privacidad').classList.remove('hidden');
+          } else if (action === 'restore-all') {
+            try {
+              Object.keys(localStorage).forEach(function (k) {
+                if (k.indexOf('zix-') === 0) localStorage.removeItem(k);
+              });
+            } catch (_) {}
+            window.location.reload();
+          }
+        });
+      });
+      // Recursos reales del equipo
+      (function paintCores() {
+        var el = document.getElementById('sys-cores');
+        if (!el) return;
+        var cores = (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 0;
+        el.textContent = cores > 0 ? cores + ' núcleos' : 'No disponible';
+      })();
+      // Conteo real de MCP instalados
+      function syncMcpCount() {
+        var el = document.getElementById('cfg-mcp-count');
+        if (!el) return;
+        var n = 0;
+        try {
+          var raw = localStorage.getItem('zix-mcp-servers');
+          var list = raw ? JSON.parse(raw) : [];
+          n = Array.isArray(list) ? list.length : 0;
+        } catch (_) {}
+        el.textContent = n + (n === 1 ? ' instalado' : ' instalados');
+      }
+      syncMcpCount();
+      document.querySelectorAll('[data-open-view="view-config"]').forEach(function (b) {
+        b.addEventListener('click', syncMcpCount);
+      });
+      // Notas honestas de MCP importar/exportar (pendiente de servicio)
+      document.querySelectorAll('[data-mcp-io]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          document.getElementById('note-mcp-io').classList.remove('hidden');
+        });
+      });
+      // Diagnóstico con comprobaciones reales del equipo
+      document.getElementById('btn-diag').addEventListener('click', function () {
+        var box = document.getElementById('diag-results');
+        var online = navigator.onLine !== false;
+        var storageOk = (function () {
+          try { localStorage.setItem('zix-diag', '1'); localStorage.removeItem('zix-diag'); return true; }
+          catch (_) { return false; }
+        })();
+        var theme = document.documentElement.getAttribute('data-theme') || 'light';
+        function diagRow(label, value, ok) {
+          return '<li><div class="cfg-row"><span>' + label + '</span>' +
+            '<span class="cfg-val' + (ok === true ? ' ok' : '') + '">' + value + '</span></div></li>';
+        }
+        box.innerHTML =
+          diagRow('Conexión', online ? 'En línea' : 'Sin conexión', online) +
+          diagRow('Almacenamiento local', storageOk ? 'Disponible' : 'Bloqueado', storageOk) +
+          diagRow('Tema aplicado', theme === 'dark' ? 'Oscuro' : 'Claro', null);
+        box.classList.remove('hidden');
+      });
+      // Exportar configuración real (JSON local)
+      var CFG_EXPORT_KEYS = ['zix-theme', 'zix-model', 'zix-provider', 'zix-settings', 'zix-mcp-servers', 'zix-providers-custom'];
+      document.getElementById('btn-cfg-export').addEventListener('click', function () {
+        var data = { exportedAt: new Date().toISOString(), app: 'ZIX IA' };
+        CFG_EXPORT_KEYS.forEach(function (k) {
+          try {
+            var v = localStorage.getItem(k);
+            data[k] = v === null ? null : v;
+          } catch (_) { data[k] = null; }
+        });
+        var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'zix-config.json';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+          try { URL.revokeObjectURL(a.href); } catch (_) {}
+          a.remove();
+        }, 500);
+        showCfgNote('Copia exportada.');
+      });
+      // Importar configuración real (solo claves conocidas)
+      var cfgImportFile = document.getElementById('cfg-import-file');
+      document.getElementById('btn-cfg-import').addEventListener('click', function () {
+        cfgImportFile.click();
+      });
+      cfgImportFile.addEventListener('change', function () {
+        var f = cfgImportFile.files && cfgImportFile.files[0];
+        if (!f) return;
+        var reader = new FileReader();
+        reader.onload = function () {
+          try {
+            var obj = JSON.parse(reader.result);
+            if (!obj || typeof obj !== 'object') throw 0;
+            var applied = 0;
+            CFG_EXPORT_KEYS.forEach(function (k) {
+              if (obj[k] !== undefined && obj[k] !== null) {
+                try { localStorage.setItem(k, typeof obj[k] === 'string' ? obj[k] : JSON.stringify(obj[k])); applied++; } catch (_) {}
+              }
+            });
+            showCfgNote(applied > 0 ? 'Configuración importada. Recargando…' : 'El archivo no trae datos válidos.');
+            if (applied > 0) setTimeout(function () { window.location.reload(); }, 800);
+          } catch (_) {
+            showCfgNote('Ese archivo no es una copia válida.');
+          }
+          cfgImportFile.value = '';
+        };
+        reader.readAsText(f);
+      });
+      function showCfgNote(text) {
+        var n = document.getElementById('note-avanzado');
+        n.textContent = text;
+        n.classList.remove('hidden');
+      }
+      document.body.classList.add('page-in');
+    })();
+  </script>
+</body>
+</html>

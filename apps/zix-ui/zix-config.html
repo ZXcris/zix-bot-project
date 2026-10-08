@@ -1,0 +1,1021 @@
+<!doctype html>
+<html lang="es"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- CSP: pagina estatica sin backend. connect-src 'none' garantiza que no
+       pueda salir nada a la red. Sin frame-ancestors porque los navegadores
+       lo ignoran dentro de un meta. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+  <title>ZIX IA — Configura ZIX</title>
+  <style>
+    /* ═══════════════════════════════════════════════════════════════════
+       ZIX · CONFIGURACIÓN INICIAL
+       Luminous Monolith — monolito claro, sin neones ni glow.
+       Superficies translúcidas mínimas (liquid glass sutil), una sola
+       identidad cromática: azul ZIX.
+
+       El tema lo manda la app (clave 'zix-theme': light | dark | system).
+       Estos tokens son la variante CLARA del monolito; el bloque light de
+       más abajo es la variante oscura, y el script del <head> resuelve cuál
+       se aplica antes del primer pintado.
+       ═══════════════════════════════════════════════════════════════════ */
+    :root {
+      /* Superficies */
+      --bg:      #ffffff;
+      --surface: #f4f4f4;
+
+      /* Texto */
+      --fg:      #1a1a1a;
+      --muted:   #5c5c5c;
+
+      /* Líneas */
+      --border:  #e3e3e3;
+
+      /* Identidad cromática única */
+      --accent:    #2563eb;
+      --accent-ink: #1d4ed8;   /* acento para texto, foco e indicadores */
+      --on-accent: #ffffff;
+
+      /* Derivados (todo desde los valores base) */
+      --border-soft:  color-mix(in oklch, var(--fg) 9%, transparent);
+      --border-line:  color-mix(in oklch, var(--fg) 12%, transparent);
+      --hairline:     color-mix(in oklch, #ffffff 70%, transparent);
+      --hover-veil:   color-mix(in oklch, var(--fg) 5%, transparent);
+      --hover-veil-2: color-mix(in oklch, var(--fg) 9%, transparent);
+      --accent-dim:   color-mix(in oklch, var(--accent) 88%, #000000);
+      --accent-line:  color-mix(in oklch, var(--accent) 30%, transparent);
+      --glass-top:    color-mix(in oklch, var(--surface) 92%, transparent);
+      --glass-bottom: color-mix(in oklch, var(--surface) 82%, transparent);
+      --inset-surface: color-mix(in oklch, var(--fg) 4%, transparent);
+      --shadow-card:  0 18px 40px color-mix(in oklch, #0a0a0a 9%, transparent);
+      --wash-1: 6%;
+      --wash-2: 4%;
+
+      /* Radios (20–40px) */
+      --radius-card:    28px;
+      --radius-control: 20px;
+
+      /* Tipografía */
+      --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+
+      /* Movimiento */
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Monolito oscuro — el mismo sistema con la superficie invertida */
+    [data-theme="dark"] {
+      --bg:      #1a1a1a;
+      --surface: #2a2a2a;
+
+      --fg:      #ededed;
+      --muted:   #a3a3a3;
+
+      --border:  #3a3a3a;
+
+      --accent:    #2563eb;
+      --accent-ink: #8ab0ff;
+      --on-accent: #ffffff;
+
+      --hairline:     color-mix(in oklch, var(--fg) 7%, transparent);
+      --hover-veil:   color-mix(in oklch, var(--fg) 6%, transparent);
+      --hover-veil-2: color-mix(in oklch, var(--fg) 11%, transparent);
+      --accent-line:  color-mix(in oklch, var(--accent) 26%, transparent);
+      --glass-top:    color-mix(in oklch, var(--surface) 80%, transparent);
+      --glass-bottom: color-mix(in oklch, var(--surface) 64%, transparent);
+      --inset-surface: color-mix(in oklch, var(--surface) 45%, transparent);
+      --shadow-card:  0 18px 40px color-mix(in oklch, #000000 34%, transparent);
+      --wash-1: 9%;
+      --wash-2: 5%;
+    }
+
+    /* Fundido suave al cambiar de tema (450ms, sin parpadeo) */
+    html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after {
+      transition: background-color 0.45s ease, border-color 0.45s ease,
+                  color 0.45s ease, box-shadow 0.45s ease !important;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.6;
+      letter-spacing: 0;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px 96px;
+      opacity: 0;
+    }
+    body.page-in  { opacity: 1; transition: opacity 0.35s ease; }
+    body.page-out { opacity: 0; transition: opacity 0.22s ease; }
+
+    /* Iluminación ambiental: lavados sin nitidez, nunca un halo de neón */
+    .ambient {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(62% 46% at 50% -12%, color-mix(in oklch, var(--accent) var(--wash-1), transparent), transparent 72%),
+        radial-gradient(48% 38% at 8% 104%, color-mix(in oklch, var(--accent) var(--wash-2), transparent), transparent 72%);
+    }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 680px;
+    }
+
+    /* Separación real entre bloques: encabezado → tarjetas → enlace final */
+    .setup-body {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    /* ─── encabezado ──────────────────────────────────────────────────── */
+    .setup-head { padding: 8px 4px 0; }
+    .brand-mark {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+    .setup-head h1 {
+      margin: 0;
+      font-size: clamp(28px, 3.4vw, 36px);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.15;
+    }
+    .setup-head .lead {
+      margin: 10px 0 0;
+      font-size: 16px;
+      line-height: 1.55;
+      color: var(--muted);
+      max-width: 46ch;
+    }
+
+    /* ─── tarjetas ─────────────────────────────────────────────────────── */
+    .card {
+      background: linear-gradient(180deg, var(--glass-top), var(--glass-bottom));
+      backdrop-filter: blur(24px) saturate(1.15);
+      -webkit-backdrop-filter: blur(24px) saturate(1.15);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-card);
+      box-shadow:
+        var(--shadow-card),
+        inset 0 1px 0 var(--hairline);
+      padding: 36px 32px;
+    }
+    .card-primary { border-color: var(--accent-line); }
+
+    .card h2 {
+      margin: 0;
+      font-size: 19px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1.3;
+    }
+    .card .card-text {
+      margin: 10px 0 0;
+      color: var(--muted);
+      max-width: 58ch;
+    }
+    .card-actions { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 12px; }
+
+    /* ─── botones ──────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      min-height: 48px;
+      padding: 0 24px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-control);
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: 0;
+      cursor: pointer;
+      transition: background-color 0.18s ease, border-color 0.18s ease,
+                  color 0.18s ease, transform 0.05s ease, box-shadow 0.18s ease;
+    }
+    .btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .btn:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; }
+
+    .btn-primary { background: var(--accent); color: var(--on-accent); }
+    .btn-primary:hover { background: var(--accent-dim); }
+    .btn-primary:active { transform: translateY(1px); }
+
+    .btn-secondary {
+      background: var(--hover-veil);
+      border-color: var(--border-line);
+      color: var(--fg);
+    }
+    .btn-secondary:hover { background: var(--hover-veil-2); border-color: color-mix(in oklch, var(--fg) 20%, transparent); }
+    .btn-secondary:active { transform: translateY(1px); }
+
+    .btn-quiet {
+      background: none;
+      border: 0;
+      color: var(--muted);
+      text-decoration: underline;
+      text-decoration-color: color-mix(in oklch, var(--fg) 26%, transparent);
+      text-underline-offset: 5px;
+      padding: 0;
+      min-height: 44px;
+    }
+    .btn-quiet:hover { color: var(--fg); text-decoration-color: currentColor; }
+    .btn-quiet:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; border-radius: 6px; }
+
+    .skip-wrap { text-align: center; }
+
+    /* Deshabilitado: solo baja la opacidad, el color no cambia */
+    .btn:disabled,
+    .btn[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }
+    .btn:disabled:active,
+    .btn[aria-disabled="true"]:active { transform: none; }
+    .btn-primary:disabled:hover,
+    .btn-primary[aria-disabled="true"]:hover { background: var(--accent); }
+    .btn-secondary:disabled:hover,
+    .btn-secondary[aria-disabled="true"]:hover {
+      background: var(--hover-veil);
+      border-color: var(--border-line);
+    }
+
+    /* ─── flujo guiado ─────────────────────────────────────────────────── */
+    .flow {
+      margin-top: 28px;
+      padding-top: 28px;
+      border-top: 1px solid var(--border-soft);
+    }
+    .flow-top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .flow-dots { display: flex; gap: 6px; }
+    .flow-dots i {
+      width: 22px;
+      height: 3px;
+      border-radius: 999px;
+      background: var(--border-line);
+      transition: background-color 0.3s ease;
+    }
+    .flow-dots i.on { background: var(--accent-ink); }
+    .flow-counter {
+      margin: 0 0 0 auto;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .flow-step h3 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      line-height: 1.25;
+    }
+    .flow-step .step-text {
+      margin: 10px 0 0;
+      color: var(--muted);
+      max-width: 52ch;
+    }
+
+    /* Frase que hay que decir */
+    .phrase {
+      margin-top: 22px;
+      padding: 22px 26px;
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-control);
+      background: var(--inset-surface);
+      text-align: center;
+    }
+    .phrase-hint {
+      margin: 12px 0 0;
+      font-size: 14px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* Petición que acompaña a cada muestra */
+    .phrase-main {
+      display: block;
+      font-size: clamp(30px, 5.4vw, 42px);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      color: var(--fg);
+    }
+    .phrase-req {
+      display: block;
+      margin-top: 12px;
+      font-size: 15px;
+      font-weight: 400;
+      line-height: 1.5;
+      color: var(--muted);
+      letter-spacing: 0;
+    }
+
+    /* Indicador de grabación */
+    .rec {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 24px;
+      padding: 16px 20px;
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-control);
+      background: var(--inset-surface);
+    }
+    .rec-mark {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--hover-veil);
+      color: var(--muted);
+      transition: color 0.3s ease, background-color 0.3s ease;
+    }
+    .rec-mark svg { width: 19px; height: 19px; }
+    .rec.on .rec-mark { background: var(--accent); color: var(--on-accent); }
+    .rec.on .rec-mark::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 1px solid var(--accent-line);
+      animation: rec-ring 1.8s ease-out infinite;
+    }
+    @keyframes rec-ring {
+      0%   { transform: scale(0.9); opacity: 0.9; }
+      100% { transform: scale(1.12); opacity: 0; }
+    }
+    .rec-body { display: block; flex: 1; min-width: 0; }
+    .rec-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+    .rec-track {
+      display: block;
+      margin-top: 8px;
+      height: 3px;
+      border-radius: 999px;
+      background: var(--border-line);
+      overflow: hidden;
+    }
+    .rec-fill {
+      display: block;
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: var(--accent-ink);
+      transition: width 0.2s linear;
+    }
+
+    /* Progreso de muestras */
+    .samples {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .seg {
+      flex: 1;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--border-line);
+      transition: background-color 0.3s ease;
+    }
+    .seg.on { background: var(--accent-ink); }
+    .samples-count {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    /* Confirmación */
+    .done-mark {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--on-accent);
+      margin-bottom: 18px;
+    }
+    .done-mark svg { width: 22px; height: 22px; }
+
+    /* ─── colaboración / consentimiento ────────────────────────────────── */
+    .fine {
+      margin: 18px 0 0;
+      font-size: 13px;
+      letter-spacing: 0.01em;
+      color: var(--muted);
+    }
+    .consent {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-soft);
+    }
+    .consent h3 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .consent ul {
+      margin: 16px 0 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .consent li {
+      position: relative;
+      padding-left: 18px;
+      font-size: 14px;
+      color: var(--muted);
+      max-width: 54ch;
+    }
+    .consent li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 9px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--accent-ink);
+    }
+    .consent-state {
+      margin-top: 20px;
+      padding: 16px 20px;
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-control);
+      background: var(--inset-surface);
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .consent-state strong { color: var(--fg); font-weight: 600; }
+
+    /* ─── estado final ─────────────────────────────────────────────────── */
+    .ready { text-align: center; padding: 44px 32px; }
+    .ready .done-mark { margin: 0 auto 20px; }
+    .ready h2 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 30px);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+    .ready p {
+      margin: 12px auto 0;
+      color: var(--muted);
+      max-width: 44ch;
+    }
+    .ready .card-actions { justify-content: center; }
+
+    .branding {
+      position: fixed;
+      bottom: 20px;
+      right: 28px;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      color: var(--muted);
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    /* ─── responsive ───────────────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      body { padding: 32px 16px 88px; }
+      .setup-body { gap: 24px; }
+      .card { padding: 28px 22px; border-radius: 24px; }
+      .card-actions .btn:not(.btn-quiet) { width: 100%; }
+      .phrase { padding: 18px 16px; }
+      .branding { right: 16px; bottom: 14px; }
+    }
+    @media (max-width: 420px) {
+      .flow-top { gap: 10px; }
+      .flow-dots i { width: 16px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body { opacity: 1; }
+      body.page-in, body.page-out { transition: none; }
+      *, *::before, *::after { animation: none !important; }
+      .btn, .flow-dots i, .seg, .rec-fill { transition: none !important; }
+    }
+  </style>
+  <script>
+    // Tema de la app (clave 'zix-theme': light | dark | system).
+    // Se resuelve en el <head> para no parpadear, sigue al sistema en vivo
+    // y funde el cambio durante 450ms. Solo lee la clave: no la escribe.
+    (function () {
+      var root = document.documentElement;
+      var animT = 0;
+      var first = true;
+      function pulse() {
+        root.classList.remove('theme-anim');
+        void root.offsetWidth;
+        root.classList.add('theme-anim');
+        clearTimeout(animT);
+        animT = setTimeout(function () { root.classList.remove('theme-anim'); }, 550);
+      }
+      function resolve() {
+        var saved = null;
+        try { saved = localStorage.getItem('zix-theme'); } catch (_) {}
+        var mode = (saved === 'dark' || saved === 'light' || saved === 'system') ? saved : 'system';
+        var dark = mode === 'dark' ||
+          (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var next = dark ? 'dark' : 'light';
+        var prev = root.getAttribute('data-theme');
+        if (prev && prev !== next && !first) pulse();
+        root.setAttribute('data-theme', next);
+        first = false;
+      }
+      resolve();
+      try {
+        var mq = window.matchMedia('(prefers-color-scheme: dark)');
+        if (mq.addEventListener) mq.addEventListener('change', resolve);
+        else if (mq.addListener) mq.addListener(resolve);
+      } catch (_) {}
+      // Cambio desde otra pantalla de ZIX (misma pestaña, p. ej. al volver)
+      window.addEventListener('storage', resolve);
+    })();
+  </script>
+  <noscript><style>body { opacity: 1; }</style></noscript>
+</head>
+<body>
+
+  <div class="ambient" aria-hidden="true"></div>
+
+  <main class="shell" data-od-id="config-shell">
+
+    <!-- ═══ CONFIGURACIÓN INICIAL ═══════════════════════════════════════ -->
+    <div id="setup" class="setup-body" data-od-id="config-setup">
+
+      <header class="setup-head" data-od-id="config-header">
+        <span class="brand-mark">ZIX IA</span>
+        <h1>Configura ZIX</h1>
+        <p class="lead">Haz que ZIX reconozca tu voz con mayor precisión.</p>
+      </header>
+
+      <!-- ── Bloque principal ── -->
+      <section class="card card-primary" id="card-voice" data-od-id="card-configure-voice">
+        <h2>Configurar mi voz</h2>
+        <p class="card-text">Di ‘Hey Zix’ unas veces para crear una referencia de tu voz en este dispositivo.</p>
+
+        <div class="card-actions" id="voice-cta">
+          <button class="btn btn-primary" type="button" id="btn-start" data-od-id="btn-configurar-voz">Configurar voz</button>
+        </div>
+
+        <!-- Experiencia guiada -->
+        <div class="flow" id="flow" data-od-id="voice-flow" hidden>
+          <div class="flow-top">
+            <div class="flow-dots" aria-hidden="true">
+              <i class="on"></i><i></i><i></i><i></i>
+            </div>
+            <p class="flow-counter" id="flow-counter">Paso 1 de 4</p>
+          </div>
+
+          <!-- Paso 1 -->
+          <div class="flow-step" data-step="1" data-od-id="flow-step-lugar" aria-live="polite">
+            <h3>Busca un lugar tranquilo</h3>
+            <p class="step-text">Habla de forma natural, como si estuvieras en una conversación. Si hay ruido alrededor, ZIX necesita más esfuerzo para reconocerte.</p>
+            <div class="card-actions">
+              <button class="btn btn-primary" type="button" data-act="next">Continuar</button>
+              <button class="btn btn-quiet" type="button" data-act="cancel">Cancelar</button>
+            </div>
+          </div>
+
+          <!-- Paso 2 -->
+          <div class="flow-step" data-step="2" data-od-id="flow-step-frase" hidden>
+            <h3>Di: Hey Zix</h3>
+            <p class="step-text">Cuando estés listo, ZIX escuchará una vez y la descartará.</p>
+            <div class="phrase"><span class="phrase-main">Hey Zix</span></div>
+            <p class="phrase-hint">Habla de forma natural y a un volumen normal.</p>
+            <div class="rec" id="rec" data-od-id="record-indicator">
+              <span class="rec-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="2" width="6" height="12" rx="3"></rect>
+                  <path d="M5 11a7 7 0 0 0 14 0"></path>
+                  <line x1="12" y1="18" x2="12" y2="22"></line>
+                </svg>
+              </span>
+              <span class="rec-body">
+                <span class="rec-label" id="rec-label" aria-live="polite">Preparado para escuchar</span>
+                <span class="rec-track"><i class="rec-fill" id="rec-fill"></i></span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Paso 3 -->
+          <div class="flow-step" data-step="3" data-od-id="flow-step-muestras" hidden>
+            <h3>Repite la frase</h3>
+            <p class="step-text">ZIX necesita cinco muestras para construir la referencia. En cada una, di ‘Hey Zix’ seguido de una petición distinta.</p>
+            <div class="phrase" id="phrase-3" aria-live="polite">
+              <span class="phrase-main">Hey Zix</span>
+              <span class="phrase-req" id="phrase-req">¿qué hora es?</span>
+            </div>
+            <div class="samples" id="sample-progress" data-od-id="sample-progress">
+              <span class="seg"></span>
+              <span class="seg"></span>
+              <span class="seg"></span>
+              <span class="seg"></span>
+              <span class="seg"></span>
+              <span class="samples-count" id="samples-count">1 / 5</span>
+            </div>
+            <div class="rec" id="rec-3">
+              <span class="rec-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="9" y="2" width="6" height="12" rx="3"></rect>
+                  <path d="M5 11a7 7 0 0 0 14 0"></path>
+                  <line x1="12" y1="18" x2="12" y2="22"></line>
+                </svg>
+              </span>
+              <span class="rec-body">
+                <span class="rec-label" id="rec-label-3" aria-live="polite">Escuchando…</span>
+                <span class="rec-track"><i class="rec-fill" id="rec-fill-3"></i></span>
+              </span>
+            </div>
+          </div>
+
+          <!-- Paso 4 -->
+          <div class="flow-step" data-step="4" data-od-id="flow-step-listo" hidden>
+            <span class="done-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </span>
+            <h3>Tu voz está configurada</h3>
+            <p class="step-text">ZIX guardará esta referencia en este dispositivo para ayudarte a reconocer tu voz.</p>
+            <div class="card-actions">
+              <button class="btn btn-primary" type="button" data-act="finish">Continuar</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Colaboración (voluntaria) ── -->
+      <section class="card" id="card-collab" data-od-id="card-collaborate">
+        <h2>Colabora con ZIX</h2>
+        <p class="card-text">Puedes compartir grabaciones de ‘Hey Zix’ para ayudar a mejorar futuras versiones del reconocimiento de voz.</p>
+
+        <div class="card-actions" id="collab-cta">
+          <button class="btn btn-secondary" type="button" id="btn-collaborate" data-od-id="btn-colaborar">Quiero colaborar</button>
+        </div>
+        <p class="fine">Tu participación es opcional.</p>
+
+        <div class="consent" id="consent" data-od-id="collab-consent" hidden>
+          <h3>Ayuda a mejorar el reconocimiento de voz</h3>
+          <p class="card-text">Si colaboras, ZIX guardará una copia de tus grabaciones de ‘Hey Zix’ en este equipo y las enviará al servicio de ZIX para entrenar futuras versiones del reconocimiento de voz.</p>
+          <ul>
+            <li>Solo se comparten las grabaciones de la frase ‘Hey Zix’.</li>
+            <li>Se comparten de forma anónima, sin vincularse a tu cuenta ni a tu nombre.</li>
+            <li>Puedes dejar de colaborar y borrar lo enviado en cualquier momento desde Configuración → Privacidad.</li>
+          </ul>
+          <div class="card-actions">
+            <!-- Sin envío de audio todavía: el control queda deshabilitado y no
+                 escribe zix-collab. Se habilita cuando exista el backend. -->
+            <button class="btn btn-primary" type="button" id="btn-accept-collab" data-od-id="btn-aceptar-colaboracion" disabled title="Disponible cuando ZIX tenga servicio de envío">Aceptar y colaborar</button>
+            <button class="btn btn-quiet" type="button" id="btn-decline-collab">Ahora no</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Continuar sin configurar ── -->
+      <div class="skip-wrap" data-od-id="skip-setup">
+        <button class="btn btn-quiet" type="button" id="btn-skip" data-od-id="btn-continuar-sin-configurar">Continuar sin configurar</button>
+      </div>
+    </div>
+
+    <!-- ═══ ESTADO FINAL ═════════════════════════════════════════════════ -->
+    <section class="card ready" id="ready" data-od-id="config-ready" hidden>
+      <span class="done-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      </span>
+      <h2>ZIX está listo</h2>
+      <p id="ready-text">Tu referencia de voz está guardada en este dispositivo. Puedes cambiarla o desactivarla cuando quieras desde Configuración.</p>
+      <div class="card-actions">
+        <button class="btn btn-primary" type="button" id="btn-enter" data-od-id="btn-entrar-a-zix">Entrar a ZIX</button>
+      </div>
+    </section>
+
+  </main>
+
+  <span class="branding">By ZIX Technology</span>
+
+  <script>
+    (function () {
+      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var $ = function (id) { return document.getElementById(id); };
+
+      var setup    = $('setup');
+      var flow     = $('flow');
+      var ctaWrap  = $('voice-cta');
+      var steps    = Array.prototype.slice.call(document.querySelectorAll('.flow-step'));
+      var dots     = Array.prototype.slice.call(document.querySelectorAll('.flow-dots i'));
+      var counter  = $('flow-counter');
+      var rec2     = $('rec');
+      var rec3     = $('rec-3');
+      var recFill2 = $('rec-fill');
+      var recFill3 = $('rec-fill-3');
+      var recLabel2 = $('rec-label');
+      var recLabel3 = $('rec-label-3');
+      var segs     = Array.prototype.slice.call(document.querySelectorAll('#sample-progress .seg'));
+      var samplesCount = $('samples-count');
+      var phraseReq = $('phrase-req');
+      var ready    = $('ready');
+
+      /* Una petición distinta por muestra: ‘Hey Zix’ + algo que el usuario
+         diría de verdad. La referencia necesita variedad, no la misma frase
+         cinco veces. */
+      var REQUESTS = [
+        '¿qué hora es?',
+        'abre el navegador.',
+        'pon música para concentrarme.',
+        '¿qué tengo pendiente hoy?',
+        'cierra las ventanas abiertas.'
+      ];
+      var SAMPLES = REQUESTS.length;
+      var CAPTURE_MS = 1800;   // duración de cada escucha simulada
+      var step = 0;            // 0 = flujo cerrado
+      var sample = 0;
+      var timers = [];
+      var flowRun = 0;         // invalida las cadenas de captura anteriores
+      var samplesRunning = false;
+      var capturePending = false;
+
+      /* Destino del flujo aprobado: CONFIG -> HOME -> CHAT. Solo se navega
+         cuando la pantalla existe de verdad: no se crean placeholders para
+         tapar un 404.
+
+         "Entrar a ZIX" apunta a zix-home-tarjeta.html. En el diseño oficial
+         ese archivo está siempre presente; aquí el Home ya está implementado,
+         así que el botón queda habilitado y navega. La resolución del
+         destino no cambia: Home si zix-voice-setup es done/skipped, esta
+         pantalla de Configuración en el primer uso. */
+      var PANTALLAS = { home: 'zix-home-tarjeta.html' };
+      var PANTALLAS_IMPLEMENTADAS = ['zix-home-tarjeta.html'];
+
+      function clearTimers() {
+        timers.forEach(clearTimeout);
+        timers = [];
+      }
+      function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+
+      /* Estado de primera configuración: solo 'done' y 'skipped'.
+         Nunca se guardan audio, referencias, embeddings ni credenciales. */
+      function saveSetup(value) {
+        try { localStorage.setItem('zix-voice-setup', value); } catch (_) {}
+      }
+
+      /* Transición limpia entre pantallas (misma del login) */
+      function pageIn() {
+        if (reduceMotion) { document.body.style.opacity = '1'; return; }
+        requestAnimationFrame(function () { document.body.classList.add('page-in'); });
+      }
+      function screenReady(file) {
+        return PANTALLAS_IMPLEMENTADAS.indexOf(file) !== -1;
+      }
+      function markHomePending() {
+        var b = $('btn-enter');
+        b.setAttribute('aria-disabled', 'true');
+        b.dataset.pendiente = PANTALLAS.home;
+      }
+      function goHome() {
+        var target = PANTALLAS.home;
+        if (!screenReady(target)) { markHomePending(); return; }
+        if (reduceMotion) { window.location.href = target; return; }
+        document.body.classList.add('page-out');
+        setTimeout(function () { window.location.href = target; }, 230);
+      }
+
+      /* ── flujo guiado ─────────────────────────────────────────────── */
+      function showStep(n) {
+        step = n;
+        steps.forEach(function (el) {
+          var i = parseInt(el.getAttribute('data-step'), 10);
+          el.hidden = i !== n;
+        });
+        dots.forEach(function (d, i) { d.classList.toggle('on', i < n); });
+        counter.textContent = 'Paso ' + n + ' de 4';
+        if (n === 3) { samplesRunning = false; resetSamples(); }
+      }
+
+      function openFlow() {
+        flowRun++;
+        flow.hidden = false;
+        ctaWrap.hidden = true;
+        showStep(1);
+      }
+
+      function closeFlow() {
+        clearTimers();
+        flowRun++;
+        samplesRunning = false;
+        capturePending = false;
+        flow.hidden = true;
+        ctaWrap.hidden = false;
+        step = 0;
+        resetRec(rec2, recFill2, recLabel2);
+      }
+
+      function resetRec(box, fill, label) {
+        box.classList.remove('on');
+        fill.style.width = '0%';
+        label.textContent = label === recLabel3 ? 'Escuchando…' : 'Preparado para escuchar';
+      }
+
+      function resetSamples() {
+        sample = 0;
+        segs.forEach(function (s) { s.classList.remove('on'); });
+        samplesCount.textContent = '1 / ' + SAMPLES;
+        phraseReq.textContent = REQUESTS[0];
+        resetRec(rec3, recFill3, recLabel3);
+      }
+
+      /* Escucha SIMULADA: presentación only. No abre el micrófono, no toca
+         AudioManager ni el wake word, no guarda audio. La captura real es una
+         costura de backend (grabVoiceSample()); aquí la UI solo comunica el
+         estado, y este es el punto donde se enchufará. */
+      function capture(box, fill, label, done) {
+        box.classList.add('on');
+        label.textContent = 'Escuchando…';
+        // Sin movimiento reducido no hace falta encadenar 1800 timers: un solo
+        // salto al final, mismo resultado visual y sin arrastrar la animación.
+        var tick = reduceMotion ? CAPTURE_MS : 60;
+        var elapsed = 0;
+        (function stepFill() {
+          elapsed = Math.min(elapsed + tick, CAPTURE_MS);
+          fill.style.width = (elapsed / CAPTURE_MS * 100) + '%';
+          if (elapsed < CAPTURE_MS) {
+            later(stepFill, tick);
+          } else {
+            box.classList.remove('on');
+            fill.style.width = '0%';
+            done();
+          }
+        })();
+      }
+
+      $('btn-start').addEventListener('click', openFlow);
+
+      flow.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-act]');
+        if (!btn) return;
+        var act = btn.getAttribute('data-act');
+        if (act === 'cancel') { closeFlow(); return; }
+        if (act === 'finish') { saveSetup('done'); showReady(); return; }
+        if (act !== 'next') return;
+
+        if (step === 1) {
+          if (capturePending) return;   // una sola escucha del paso 2
+          capturePending = true;
+          showStep(2);
+          capture(rec2, recFill2, recLabel2, function () {
+            capturePending = false;
+            showStep(3);
+          });
+        }
+      });
+
+      /* Muestras del paso 3. Un único.chain de muestras: el flag vive en el
+         cierre, no en el DOM, para que reiniciar el paso no deje dos cadenas
+         compitiendo por el mismo 'sample'. */
+      (function runSamples() {
+        var observer = new MutationObserver(function () {
+          var active = !steps[2].hidden;
+          if (active && !samplesRunning) {
+            samplesRunning = true;
+            takeSample();
+          } else if (!active) {
+            samplesRunning = false;
+          }
+        });
+        observer.observe(steps[2], { attributes: true, attributeFilter: ['hidden'] });
+      })();
+
+      function takeSample() {
+        if (sample >= SAMPLES || !segs[sample]) { samplesRunning = false; return; }
+        samplesCount.textContent = (sample + 1) + ' / ' + SAMPLES;
+        phraseReq.textContent = REQUESTS[sample];
+        // El segmento se enciende al empezar la muestra: el contador y las
+        // líneas azules nunca se contradicen (N / 5 con N líneas encendidas).
+        segs[sample].classList.add('on');
+        var token = flowRun;
+        capture(rec3, recFill3, recLabel3, function () {
+          if (token !== flowRun) return;          // cadena obsoleta: se abandona
+          sample++;
+          if (sample >= SAMPLES) {
+            later(function () { showStep(4); }, 420);
+          } else {
+            later(takeSample, 320);
+          }
+        });
+      }
+
+      /* ── colaboración ──────────────────────────────────────────────── */
+      var consent = $('consent');
+      var collabCta = $('collab-cta');
+      var collabFine = document.querySelector('#card-collab .fine');
+
+      $('btn-collaborate').addEventListener('click', function () {
+        collabCta.hidden = true;
+        collabFine.hidden = true;
+        consent.hidden = false;
+        $('btn-decline-collab').focus();
+      });
+
+      function closeConsent() {
+        consent.hidden = true;
+        collabCta.hidden = false;
+        collabFine.hidden = false;
+      }
+
+      $('btn-decline-collab').addEventListener('click', closeConsent);
+
+      // Aceptar y colaborar está deshabilitado hasta que exista el servicio de
+      // envío: el botón no persiste nada ni manda audio. Al conectarlo basta
+      // con quitar el atributo `disabled` y activar la costura de abajo.
+      $('btn-accept-collab').addEventListener('click', function () {
+        /* TODO backend: submitVoiceContribution() — sin servicio, no se
+           escribe zix-collab ni se envía ninguna grabación. */
+      });
+
+      /* Estado ya configurado o ya omitido: la tarjeta lo dice con palabras,
+         sin prometer ninguna subida. */
+      function applySkippedState() {
+        $('card-voice').querySelector('.card-text').textContent =
+          'Puedes crear una referencia de tu voz en cualquier momento desde Configuración.';
+      }
+
+      /* ── salidas ───────────────────────────────────────────────────── */
+      function showReady() {
+        clearTimers();
+        flowRun++;
+        samplesRunning = false;
+        capturePending = false;
+        setup.hidden = true;
+        ready.hidden = false;
+        $('btn-enter').focus();
+      }
+
+      $('btn-skip').addEventListener('click', function () {
+        saveSetup('skipped');
+        // Home todavía no existe: se persiste el estado y se refleja en la
+        // propia pantalla en vez de navegar a un 404.
+        if (!screenReady(PANTALLAS.home)) applySkippedState();
+        goHome();
+      });
+      $('btn-enter').addEventListener('click', goHome);
+
+      // Ya configurado en este dispositivo: mostrar solo la confirmación final.
+      (function restore() {
+        var value = null;
+        try { value = localStorage.getItem('zix-voice-setup'); } catch (_) {}
+        if (value === 'done') {
+          showReady();
+          $('ready-text').textContent =
+            'Tu referencia de voz está guardada en este dispositivo. Puedes cambiarla o desactivarla cuando quieras desde Configuración.';
+        } else if (value === 'skipped') {
+          applySkippedState();
+        }
+      })();
+
+      // Frontera con Home: mientras no exista, el CTA final queda deshabilitado.
+      if (!screenReady(PANTALLAS.home)) markHomePending();
+
+      pageIn();
+    })();
+  </script>
+</body></html>
