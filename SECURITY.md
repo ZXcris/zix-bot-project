@@ -20,10 +20,16 @@ corregida.
 
 Revisado antes de la primera publicacion:
 
-- **0 CVEs conocidas** en las 18 dependencias directas (API de OSV).
-  `sounddevice 0.5.6` no pudo consultarse ese dia; repetir.
+- **0 CVEs conocidas** en las **18 dependencias directas** (API de OSV),
+  incluido `sounddevice 0.5.6`, cuya primera consulta falló por un corte de red
+  y se repitió hasta confirmar 0.
+- **Versiones fijadas con hashes.** `requirements.lock` fija los 48 paquetes del
+  entorno con sus sha256 de PyPI, validado con
+  `pip install --require-hashes --dry-run`. Instalar sin ese fichero deja la
+  puerta abierta a que una dependencia publique una versión alterada.
 - **Sin secretos** en el historial: `.env` nunca se versiono, y no hay claves
-  de Groq, OpenAI, Anthropic, GitHub, AWS ni Slack en ningun commit.
+  de Groq, OpenAI, Anthropic, GitHub, AWS ni Slack en ningun commit. Tras el
+  saneamiento, los commits antiguos dejaron de ser descargables desde GitHub.
 - **CSP** declarada en las cuatro pantallas, con `connect-src 'none'`: la
   interfaz no puede salir a la red.
 - **Sin XSS**: la UI escapa `& < > " '` antes de interpolar en `innerHTML`.

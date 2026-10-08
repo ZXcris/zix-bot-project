@@ -18,6 +18,17 @@ Copy-Item .env.example .env      # y rellena tus claves
 .\.venv\Scripts\python.exe -m pip install git-filter-repo   # si vas a tocar el historial
 ```
 
+Para una instalación **reproducible** (la recomendada al publicar una release):
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --require-hashes -r requirements.lock
+```
+
+`requirements.txt` lleva versiones sueltas para el día a día;
+`requirements.lock` fija las 48 con sus hashes sha256 de PyPI. Instalar desde el
+lockfile garantiza que recibes exactamente lo que se probó, aunque una
+dependencia publique mañana una versión alterada o rota.
+
 En Windows, `sounddevice` necesita **PortAudio**. Sin él, la captura de audio
 no arranca.
 
