@@ -1,0 +1,1 @@
+"""ZIX-PC: asistente personal de IA por voz para Windows."""
