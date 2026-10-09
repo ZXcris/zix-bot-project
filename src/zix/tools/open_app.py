@@ -4,6 +4,13 @@ Seguridad: la herramienta solo acepta nombres de una lista blanca fija.
 Nunca ejecuta comandos, scripts ni rutas arbitrarias proporcionadas por el
 modelo; si la aplicación no está en la lista, rechaza la solicitud y
 devuelve el motivo. No usa shell (subprocess.Popen sin shell=True).
+
+La lista NO incluye terminales ni interpretes de comandos, a propósito
+(2026-10-09). Permitir 'terminal' -> cmd.exe/wt.exe anulaba el diseño entero:
+una inyección de prompt o un simple error de palabra bastaba para que el
+modelo abriera un intérprete de comandos. ZIX es de voz, así que no hay a quién
+pedirle confirmación antes de abrir una shell; por eso la opción segura es
+no ofrecerla. Si necesitas una terminal, ábrela tú.
 """
 from __future__ import annotations
 
@@ -13,6 +20,17 @@ import subprocess
 from typing import Optional
 
 from ..core.tool import Tool
+
+# Interpretes de comandos que NUNCA deben entrar en la lista blanca.
+# tests/test_open_app.py lo verifica: si alguien añade uno, el test falla.
+FORBIDDEN_BINARIES = frozenset({
+    "cmd", "cmd.exe", "powershell", "powershell.exe", "pwsh", "pwsh.exe",
+    "wt", "wt.exe", "bash", "bash.exe", "sh", "zsh", "wsl", "wsl.exe",
+    "mshta", "mshta.exe", "cscript", "cscript.exe", "wscript", "wscript.exe",
+    "regsvr32", "regsvr32.exe", "rundll32", "rundll32.exe", "msiexec",
+    "curl", "curl.exe", "bitsadmin", "python", "python.exe", "pythonw",
+    "node", "node.exe",
+})
 
 # Lista blanca: nombre canónico -> candidatos de resolución
 # (nombres de ejecutable buscables en PATH y rutas conocidas de instalación).
@@ -35,7 +53,6 @@ KNOWN_APPS: dict[str, list[str]] = {
     "paint": ["mspaint.exe"],
     "calculator": ["calc.exe"],
     "explorer": ["explorer.exe"],
-    "terminal": ["wt.exe", "cmd.exe"],
     "word": [
         "winword.exe",
         r"C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE",
@@ -79,6 +96,14 @@ def open_app(app: str) -> str:
     resolved = _resolve_candidates(KNOWN_APPS[key])
     if resolved is None:
         return f"No se encontró el ejecutable de '{app}' en este equipo."
+    # Segunda barrera: aunque alguien metiese una shell en la lista, aqui se
+    # corta. Se compara solo el nombre del ejecutable, no la ruta completa.
+    ejecutable = os.path.basename(resolved).lower()
+    if ejecutable in FORBIDDEN_BINARIES:
+        return (
+            f"Rechazada: '{app}' resolvería a un intérprete de comandos "
+            f"({ejecutable}), que no está permitido en las herramientas de ZIX."
+        )
     subprocess.Popen([resolved])
     return f"Abierta: {app}."
 

@@ -43,7 +43,27 @@ Revisado antes de la primera publicacion:
 2. **El pipeline es bloqueante.** Mientras ZIX habla, el microfono se apaga.
    Sin full-duplex ni cancelacion de eco, el altavoz puede realimentarse en el
    microfono.
-3. **`zxops_server.py` no limita `Content-Length`.** Escucha solo en localhost,
-   pero un `Content-Length` enorme puede agotar memoria. Pendiente de un tope.
-4. **El wake word propio no es fiable.** Acierta 4/27 (15%) sobre voz humana
-   real; por eso `.env` usa `hey_jarvis`. Ver `docs/SESSION_STATE.md`.
+3. **El wake word propio no es fiable.** Acierta 4/27 (15%) sobre voz humana
+   real; por eso `.env` usa `hey_jarvis`, que escucha "Hey Jarvis" y no
+   "Hey ZIX". Ese encadenamiento es el riesgo de privacidad mas serio que
+   queda: un podcast que diga "Hey Jarvis" despierta ZIX, que graba lo que
+   suene despues y lo envia a Groq. Se cierra reentrenando `zix.onnx` con voz
+   humana.
+
+## Corregido el 2026-10-09
+
+- **`open_app` permitia abrir una terminal.** `KNOWN_APPS` contenia
+  `"terminal": ["wt.exe", "cmd.exe"]`, lo que anulaba el diseno de "herramientas
+  seguras": una inyeccion de prompt bastaba para abrir un interprete de
+  comandos. Se quito de la lista y se anadio `FORBIDDEN_BINARIES` (33
+  interpretes, scripts y binarios de descarga) como segunda barrera en
+  runtime, por si alguien reintroduce uno. `tests/test_open_app.py` (15 tests)
+  vigila la invariante.
+- **`innerHTML` sin escape en la consola ZX Ops.** Anadio `esc()` y aplicado a
+  los campos de texto libre. Verificado inyectando HTML en un nombre de
+  agente: 0 nodos ejecutados.
+
+Nota de correccion: el tope de `Content-Length` en `zxops_server.py` se
+reporto como ausente en un escaneo previo. **Es falso positivo**: el limite de
+64 KB esta en la linea siguiente a la lectura, y `rfile.read` solo aparece una
+vez en todo el fichero.
