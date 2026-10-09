@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import itertools
 import logging
+import os
 import sys
 import time
 from typing import Tuple
@@ -27,12 +28,52 @@ from zix.core.tool_executor import ToolExecutor
 from zix.core.tool_registry import ToolRegistry
 from zix.tools import register_builtin_tools
 from zix.voice.audio import AudioManager
+from zix.voice.stt_provider import STTError
 from zix.voice.conversation import ConversationManager
 from zix.voice.groq_stt import GroqSTTProvider
 from zix.voice.openwakeword_wake_word import OpenWakeWordProvider
 from zix.voice.piper_tts import PiperTTSProvider
 
 logger = logging.getLogger("zix.voice_main")
+
+
+def _build_stt(config: Config):
+    """Elige el proveedor de STT segun STT_PROVIDER y STT_ALLOW_CLOUD.
+
+    - 'local' exige faster-whisper: si falta, se dice con el comando exacto en
+      lugar de fallar con un ImportError seco.
+    - 'auto' usa local si esta disponible y cae a la nube si no.
+    - 'groq' va a la nube, y se niega a arrancar si STT_ALLOW_CLOUD=0: es
+      mejor no transcribir que enviar audio contra la decision del usuario.
+    """
+    from zix.voice.groq_stt import GroqSTTProvider
+
+    opcion = (config.stt_provider or "groq").strip().lower()
+
+    if opcion in ("local", "auto"):
+        from zix.voice.local_stt import construir_si_es_posible
+
+        local = construir_si_es_posible(
+            model_name=os.getenv("STT_LOCAL_MODEL", "base"),
+            language=config.stt_language,
+        )
+        if local is not None:
+            return local
+        if opcion == "local":
+            raise STTError(
+                "STT_PROVIDER=local pero faster-whisper no esta instalado. "
+                "Instalalo con: .venv\\Scripts\\python.exe -m pip install "
+                "faster-whisper"
+            )
+
+    if not config.stt_allow_cloud:
+        raise STTError(
+            "STT_ALLOW_CLOUD=0 y no hay STT local disponible: ZIX no puede "
+            "transcribir sin enviar audio a un servidor. Instala "
+            "faster-whisper y pon STT_PROVIDER=local, o vuelve a poner "
+            "STT_ALLOW_CLOUD=1 si aceptas el envio."
+        )
+    return GroqSTTProvider(config)
 
 
 def build_pipeline(
@@ -58,7 +99,7 @@ def build_pipeline(
         models_dir=project_path(config.wake_models_dir),
         speex_noise_suppression=config.wake_word_speex_ns,
     )
-    stt = GroqSTTProvider(config)
+    stt = _build_stt(config)
     tts = PiperTTSProvider(config)
 
     runtime = project_path(config.voice_runtime_dir)

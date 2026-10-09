@@ -5,6 +5,8 @@ fakes. La lógica es independiente de STT/LLM/TTS (todo es inyectado).
 """
 from __future__ import annotations
 
+import tempfile
+import wave
 from pathlib import Path
 
 import numpy as np
@@ -16,6 +18,10 @@ from zix.voice.states import State
 BLOCK = 1280
 SILENCE = np.zeros(BLOCK, dtype=np.float32)
 SPEECH = np.full(BLOCK, 0.1, dtype=np.float32)
+
+# Carpeta temporal donde make_manager escribe los WAV reales que consume el
+# filtro previo a la subida.
+_TMP: Path | None = None
 
 
 class FakeClock:
@@ -50,6 +56,12 @@ def make_config(**overrides) -> Config:
         voice_max_utterance_seconds=30.0,
         voice_conversation_timeout_seconds=10.0,
         voice_order_min_chars=2,
+        # Estos tests usan audio sintetico constante (un array de 0.1), que
+        # Silero identifica correctamente como 'no es voz'. Como aqui se prueba
+        # la maquina de estados con un STT inyectado, no la calidad del audio,
+        # el filtro previo se desactiva aqui. El default del producto sigue
+        # siendo 0.15 y lo prueban los tests de privacidad (test_privacidad_stt).
+        stt_min_speech_ratio=0.0,
     )
     base.update(overrides)
     return Config(**base)
@@ -68,7 +80,21 @@ def make_manager(
 
     def default_save(samples: np.ndarray) -> Path:
         saved.append(samples)
-        return Path("fake_utterance.wav")
+        # Se escribe un WAV de verdad porque el filtro previo a la subida
+        # (upload_guard) LEE el fichero: si no existe, lo rechaza, que es lo
+        # correcto en produccion. Devolver una ruta ficticia hacia el veto del
+        # filtro, no hacia una perdida de cobertura real.
+        global _TMP
+        if _TMP is None:
+            _TMP = Path(tempfile.mkdtemp(prefix="zix-conv-"))
+        ruta = _TMP / f"utterance_{len(saved):03d}.wav"
+        with wave.open(str(ruta), "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(16000)
+            pcm = np.clip(np.asarray(samples) * 32767.0, -32768, 32767).astype(np.int16)
+            w.writeframes(pcm.tobytes())
+        return ruta
 
     def default_agent(text: str) -> str:
         ran.append(text)
@@ -167,7 +193,13 @@ def test_full_flow_wake_order_response_conversation():
     complete_utterance(m, clock)
 
     assert m.state is State.CONVERSATION
-    assert transcribe.calls == [Path("fake_utterance.wav")]
+    # El STT recibe la ruta real del WAV que se acaba de escribir en disco.
+    # Antes era 'fake_utterance.wav', pero el filtro previo a la subida lee el
+    # fichero, asi que un path inexistente lo veto (correctamente).
+    assert len(transcribe.calls) == 1
+    assert transcribe.calls[0].suffix == ".wav"
+    assert transcribe.calls[0].exists()
+    assert transcribe.calls[0].name.startswith("utterance_")
     assert m._ran == ["abre Chrome"]
     assert m._spoken == ["Respuesta de prueba de ZIX."]
     assert len(m._saved) == 1

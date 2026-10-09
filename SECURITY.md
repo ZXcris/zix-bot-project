@@ -36,6 +36,29 @@ Revisado antes de la primera publicacion:
 - **Sin `eval`, `pickle`, `os.system`, `shell=True` ni `verify=False`.**
 - ZX Ops escucha solo en `127.0.0.1` y no se distribuye.
 
+## Controles de privacidad del STT (2026-10-09)
+
+El audio es el dato mas sensible que maneja ZIX. Tres controles, en este orden
+dedecision:
+
+1. **Interruptor** — `STT_ALLOW_CLOUD=0` impide cualquier envio cuando el STT
+   activo es de nube. El pipeline se niega a arrancar y dice que hacer.
+2. **Proveedor local** — `STT_PROVIDER=local` transcribe con faster-whisper en
+   el equipo: el audio no sale nunca. `auto` usa local si esta disponible.
+3. **Filtro previo a la subida** — `upload_guard` decide ANTES de transcribir,
+   con Silero en local y sin red: descarta silencio, ruido y audio mas largo
+   que `STT_MAX_SECONDS`.
+
+Por que el filtro va antes y no despues: `is_valid_order()` se ejecuta cuando
+el audio **ya subio**. Es una comprobacion de calidad del texto, no una puerta.
+
+Que NO resuelve esto: decidir si el audio contiene una orden dirigida a ZIX. Eso
+exige transcribir, y transcribir es precisamente lo que sube el audio. El
+cambio real llega cuando el wake word responda a la voz del usuario.
+
+Comprobado con audio real: una grabacion de voz propia pasa (83% de voz); un
+tono sintetico y el silencio se descartan sin enviar nada.
+
 ## Limitaciones conocidas
 
 1. **El STT sale a la nube.** Con `groq` configurado, el audio se envia a

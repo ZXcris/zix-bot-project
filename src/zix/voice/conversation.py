@@ -140,6 +140,18 @@ class ConversationManager:
             self._reset_capture()
 
     # ------------------------------------------------------------------
+    # Privacidad de la subida
+    # ------------------------------------------------------------------
+    def _es_stt_en_la_nube(self) -> bool:
+        """True si el STT activo manda el audio a un servidor.
+
+        Se deduce del proveedor, no de la clase: asi el interruptor
+        STT_ALLOW_CLOUD tambien protege cuando el proveedor se cambia por
+        configuracion.
+        """
+        return self._config.stt_provider != "local"
+
+    # ------------------------------------------------------------------
     # Orden válida
     # ------------------------------------------------------------------
     def is_valid_order(self, text: Optional[str]) -> bool:
@@ -194,6 +206,22 @@ class ConversationManager:
         self._process_utterance(path, origin)
 
     def _process_utterance(self, path: Path, origin: Optional[State]) -> None:
+        # Filtro local ANTES de transcribir. is_valid_order() llega tarde para
+        # esto: cuando corre, el audio ya subio. Aqui no ha salido nada todavia.
+        from .upload_guard import decidir_subida
+
+        permitido, motivo = decidir_subida(
+            path,
+            permitir_nube=self._config.stt_allow_cloud,
+            es_nube=self._es_stt_en_la_nube(),
+            minimo_fraccion=self._config.stt_min_speech_ratio,
+            max_segundos=self._config.stt_max_seconds,
+        )
+        logger.info("Guarda de subida: %s (%s)", "permite" if permitido else "descarta", motivo)
+        if not permitido:
+            self._return_to(origin)
+            return
+
         try:
             text = self._transcribe(path)
         except Exception:  # noqa: BLE001 - STTError y cualquier otro

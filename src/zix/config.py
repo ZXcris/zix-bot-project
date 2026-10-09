@@ -83,6 +83,21 @@ class Config:
     # --- STT (v0.2) ---
     stt_model: str = "whisper-large-v3-turbo"
     stt_language: str = "es"
+    # Proveedor de STT: 'groq' (nube), 'local' (faster-whisper en este equipo)
+    # o 'auto' (local si esta disponible, si no nube).
+    stt_provider: str = "groq"
+    # Interruptor de privacidad. Con False NO se envia audio a ningun servidor:
+    # si el proveedor activo es la nube, el pipeline se niega a transcribir y lo
+    # dice. Es el freno de emergencia ante un falso positivo de la palabra de
+    # activacion.
+    stt_allow_cloud: bool = True
+    # Fraccion minima de tramas que Silero debe marcar como habla antes de
+    # enviar audio. Filtra silencio y ruido en LOCAL, sin red: reduce el audio
+    # que sale, aunque no lo elimina (no puede juzgar el contenido).
+    stt_min_speech_ratio: float = 0.15
+    # Tope de duracion de lo que se transcribe, para acotar el peor caso de una
+    # activacion falsa.
+    stt_max_seconds: float = 15.0
 
     # --- TTS (v0.2) ---
     piper_voice: str = "es_MX-claude-high"
@@ -142,6 +157,11 @@ class Config:
             in {"1", "true", "yes", "on"},
             stt_model=os.getenv("STT_MODEL", "whisper-large-v3-turbo").strip(),
             stt_language=os.getenv("STT_LANGUAGE", "es").strip(),
+            stt_provider=os.getenv("STT_PROVIDER", "groq").strip().lower() or "groq",
+            stt_allow_cloud=os.getenv("STT_ALLOW_CLOUD", "1").strip().lower()
+            in {"1", "true", "yes", "on"},
+            stt_min_speech_ratio=float(os.getenv("STT_MIN_SPEECH_RATIO", "0.15")),
+            stt_max_seconds=float(os.getenv("STT_MAX_SECONDS", "15.0")),
             piper_voice=os.getenv("PIPER_VOICE", "es_MX-claude-high").strip(),
             piper_models_dir=os.getenv("PIPER_MODELS_DIR", "models/piper").strip(),
             piper_espeak_data_dir=os.getenv(
