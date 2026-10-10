@@ -82,3 +82,40 @@ stop
 .codex/
 .mcp/
 *.har
+
+# ---------------------------------------------------------------------
+# Grabaciones de voz y respaldos: NUNCA versionar.
+# Añadido el 2026-10-10 al preparar el repo para publicar.
+#
+# - *.zip: heyzix_clips.zip son 27 clips de voz REAL (persona identificable
+#   de forma sensible: la voz es dato biometrico). Estaba sin ignorar, asi
+#   que un 'git add -A' lo habria publicado.
+# - *.bundle: un bundle de git contiene TODO el historial, incluido el
+#   eliminado, con el correo real del autor.
+# - *.wav / *.mp3 / *.m4a / *.flac: cualquier audio en general.
+#
+# Los clips de entrenamiento viven ya en data/wakeword_real/ (ignorado) y
+# el retenido de verificacion en data/wakeword_heldout/.
+*.zip
+*.bundle
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg
+
+# ---------------------------------------------------------------------
+# ZX Ops: PENDIENTE DE REVISION, fuera del repo a proposito.
+#
+# Son 24 ficheros de backend + JS y 8 tests, y todavia no se ha decidido si
+# entran. No se ignoran solo por prudencia: es que NO ESTAN REVISADOS para
+# publicacion. Faltan dos comprobaciones:
+#   1) que backend/ no tenga credenciales ni rutas de esta maquina
+#   2) que los tests test_zxops_e2e / test_zxops_opencode pasen en Linux
+#      (el CI corre en Windows y Linux; si fallan en Linux se pone rojo y
+#      bloquea a todos los contribuidores)
+#
+# Si decides incluirlos, quita estas dos lineas. Los tests van juntos que la
+# app: subir los tests sin el codigo que prueban rompe el CI.
+apps/zx-ops/
+tests/test_zxops_*.py

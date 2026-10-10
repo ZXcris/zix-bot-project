@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# El token por defecto no necesita escribir nada: el CI solo lee y prueba.
+# Declararlo aqui evita que un workflow introducido por un tercero reciba
+# permisos de escritura por accidente.
+permissions:
+  contents: read
+
 # Cancela ejecuciones anteriores del mismo ref.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -61,3 +67,42 @@ jobs:
         run: |
           python -m pip install --upgrade pip-audit
           python -m pip_audit --strict --progress-spinner off
+
+  secretos:
+    name: Secretos en el historial
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gitleaks necesita TODO el historial. Sin esto solo veria el
+          # ultimo commit y un secreto ya reescrito pasaria desapercibido.
+          fetch-depth: 0
+
+      - name: Descargar gitleaks (version y checksum fijados)
+        run: |
+          set -euo pipefail
+          VERSION=8.30.1
+          SHA256=551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+          curl -sSfL -o /tmp/gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz"
+          echo "${SHA256}  /tmp/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          /tmp/gitleaks version
+
+      - name: Escanear el repositorio completo
+        run: |
+          # --redact no imprime el secreto en el log del CI, que tambien
+          # queda registrado en GitHub durante 90 dias.
+          /tmp/gitleaks detect \
+            --source . \
+            --redact \
+            --no-banner \
+            --exit-code 1
+
+      - name: El .env de ejemplo no debe traer valores reales
+        run: |
+          if grep -nEi '(KEY|TOKEN|SECRET|PASSWORD)[[:space:]]*=[[:space:]]*[^[:space:]#]{8,}' .env.example; then
+            echo "::error::.env.example parece contener un valor real, no un marcador"
+            exit 1
+          fi
+          echo ".env.example limpio"

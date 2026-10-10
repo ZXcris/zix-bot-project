@@ -1,0 +1,39 @@
+# Frena los secretos ANTES de que lleguen al historial.
+#
+# Por que tambien esto, si ya hay un escaneo en el CI: porque un secreto
+# comitido hay que reescribir el historial entero para quitarlo. Si se frena
+# aqui, se pierde el trabajo de un segundo. El CI es la red; esto frena antes
+# de llegar a la red.
+#
+# Instalar una vez:
+#     pip install pre-commit
+#     pre-commit install
+#
+# Quien colabore no esta obligado a usarlo: el CI le pasa el escano igual.
+# Fijado el 2026-10-10.
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ['--maxkb=512']
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        exclude: '\.(md|bmp|gif|jpe?g|png)$'
+
+  # Nada de esto puede acabar en el repositorio.
+  - repo: https://github.com/Ludeeus/action-gitleaks
+    rev: v2
+    hooks:
+      - id: gitleaks
+
+  # Aviso de Python obsoleto: evita que alguien fije una version que ya no
+  # recibe parches de seguridad.
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.20.0
+    hooks:
+      - id: pyupgrade
+        args: ['--py312-plus']

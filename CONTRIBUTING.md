@@ -53,6 +53,15 @@ no arranca.
 7. **Verificar el wake word solo con voz retenida.** Nunca con los clips de
    entrenamiento: `scripts/wakeword_training/verify_heldout.py` lo impide
    incluso, y avisa si le pasas una carpeta de entrenamiento.
+8. **No subas modelos entrenados.** Ni `*.onnx`, ni `*.tflite`, ni checkpoints.
+   No es una cuestión de tamaño: el modelo se entrenó con FMA, que es
+   **CC-BY-NC**, es decir *no comercial*. Si ese modelo entrara en el repo,
+   esa restricción se arrastraría a todo el proyecto y nadie podría venderse
+   ZIX. `NOTICE.md` explica el detalle; aquí basta con la regla: si necesitas
+   subir uno, abre primero un issue y lo discutimos antes de entrenarlo.
+9. **El audio no se versiona.** `.gitignore` bloquea `*.wav`, `*.mp3`, `*.zip`
+   y `*.bundle`. Es deliberado: la voz es un dato biométrico. Si tu PR necesita
+   una muestra de audio, coméntalo en el issue y se decide.
 
 ## Tests
 
@@ -60,13 +69,31 @@ no arranca.
 .\.venv\Scripts\python.exe -m pytest tests/ -q
 ```
 
-Ahora hay **336 tests**. Antes de abrir un PR:
+Ahora hay **366 tests** que pasan y 1 omitido. Antes de abrir un PR:
 
 - Los tests nuevos van en `tests/`.
 - Los scripts de `scripts/` que no los ejecuta pytest son *opt-in*: si contienen
   lógica pura, añade tests para esa lógica (mira `tests/test_wakeword_tools.py`).
 - Si tocas la UI, actualiza también la copia en Open Design, o el diseño y el
   código se desincronizan.
+
+## Comprobaciones antes de enviar
+
+El CI corre cuatro trabajos: la suite en Windows y en Linux, las
+comprobaciones de interfaz, `pip-audit` contra las CVEs conocidas, y un
+escaneo de secretos sobre todo el historial.
+
+En local, lo mismo en un paso:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install pre-commit
+.\.venv\Scripts\python.exe -m pre_commit install
+```
+
+A partir de ahí, cada `git commit` pasa por el escaneo de secretos antes de
+existir. No es obligatorio: quien no lo instale sigue trabajando sin drama,
+porque el CI le comprueba lo mismo. Si alguna vez hay que saltárselo
+(`--no-verify`), menciónalo en el PR.
 
 ## Commits
 

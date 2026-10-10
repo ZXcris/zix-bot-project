@@ -1,0 +1,52 @@
+# Dependabot abre PRs solo cuando algo cambia.
+#
+# Sin esto, el trabajo 'pip-audit' del CI se limita a gritar cuando aparece
+# un CVE: alguien tiene que enterarse, buscar la version buena y abrir el PR.
+# Con esto llega solo y ya revisado.
+#
+# Fijado el 2026-10-10 al preparar el repositorio para recibir contribuciones.
+version: 2
+
+updates:
+  # Dependencias de Python del proyecto.
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Madrid
+    open-pull-requests-limit: 5
+    labels:
+      - dependencias
+      - seguridad
+    commit-message:
+      prefix: "dep"
+    groups:
+      # Actualizar todo lo de una vez reduce el numero de PRs a revisar,
+      # pero mantiene cada grupo lo bastante pequeno como para poder
+      # entender el impacto si algo se rompe.
+      test-framework:
+        patterns:
+          - "pytest*"
+          - "pip-audit"
+      lint-and-format:
+        patterns:
+          - "ruff*"
+          - "black*"
+
+  # Las acciones del propio CI tambien tienen dependencias que se
+  # rompen (o se vulneran). Sin esto nadie las actualiza nunca.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Madrid
+    open-pull-requests-limit: 5
+    labels:
+      - dependencias
+      - ci
+    commit-message:
+      prefix: "ci"
