@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Vulnerabilidad de seguridad
+    url: https://github.com/ZXcris/zix-bot-project/blob/main/SECURITY.md
+    about: No abras un issue público. Sigue el proceso de SECURITY.md.
+  - name: Cómo contribuir
+    url: https://github.com/ZXcris/zix-bot-project/blob/main/CONTRIBUTING.md
+    about: Reglas del proyecto, zonas delicadas y cómo pasar los tests.

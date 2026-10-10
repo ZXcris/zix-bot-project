@@ -63,10 +63,20 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: pip-audit
+      - name: Auditar las dependencias declaradas
         run: |
           python -m pip install --upgrade pip-audit
-          python -m pip_audit --strict --progress-spinner off
+          # Auditar requirements.txt, NO el entorno instalado.
+          #
+          # Antes era 'pip_audit --strict' a secas, y este job no instala el
+          # proyecto: auditaba el entorno base de Ubuntu (pip, setuptools) y
+          # se daba por bueno. No miraba ninguna dependencia nuestra, o sea
+          # que hacia exactamente nada.
+          #
+          # Con -r se resuelven las declaradas. Tambien evita el otro fallo:
+          # 'zix' es un paquete local que no esta en PyPI, y al auditar el
+          # entorno abortaba con exit 1 en todos los push.
+          python -m pip_audit -r requirements.txt --strict --progress-spinner off
 
   secretos:
     name: Secretos en el historial
