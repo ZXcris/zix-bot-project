@@ -37,6 +37,13 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
 
+      # openwakeword NO trae sus modelos .onnx en el paquete de pip. Sin esto,
+      # el VAD de Silero no arranca, decidir_subida no puede filtrar, y los
+      # tests de privacidad fallan por el motivo equivocado. Tambien evita
+      # que el fallo se confunda con un fallo de logica.
+      - name: Descargar los modelos de openWakeWord
+        run: python -c "from openwakeword.utils import download_models; download_models()"
+
       - name: Suite completa
         run: python -m pytest tests/ -q
 

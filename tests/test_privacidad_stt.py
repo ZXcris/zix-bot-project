@@ -158,6 +158,57 @@ def test_la_config_acepta_el_proveedor_local() -> None:
     assert Config(stt_provider="local").stt_provider == "local"
 
 
+# ────────────── sin VAD: la puerta se CIERRA (2026-12-10) ──────────────
+#
+# Estos dos tests fijan una correccion de seguridad. Antes, cuando Silero no
+# estaba disponible, decidir_subida devolvia True con "Sin VAD disponible: no
+# se puede filtrar, se continua". Como openwakeword NO trae sus modelos .onnx
+# en el paquete de pip, eso significa que en cualquier instalacion limpia el
+# freno no existia: el audio subia entero y el unico rastro era una linea de
+# log. Un freno que puede desaparecer en silencio no es un freno.
+
+
+def test_sin_vad_no_se_sube(tmp_path: Path, monkeypatch) -> None:
+    """Sin informacion no se sube. Fallar cerrado, no abierto."""
+    import zix.voice.upload_guard as guard
+
+    monkeypatch.setattr(guard, "fraccion_de_habla", lambda _p: None)
+    ruta = _wav(tmp_path, "voz.wav", _tono(2.0))
+    permitido, motivo = decidir_subida(ruta, permitir_nube=True, es_nube=True)
+    assert not permitido, "sin VAD no se debe subir nada a un servidor"
+    assert "Silero" in motivo
+    # el mensaje tiene que decir como arreglarlo, no solo que no se puede
+    assert "download_models" in motivo or "STT_ALLOW_UNFILTERED" in motivo
+
+
+def test_sin_vad_se_puede_forzar_a_proposito(tmp_path: Path, monkeypatch) -> None:
+    """La puerta de salida existe, pero hay que abrirla a proposito."""
+    import zix.voice.upload_guard as guard
+
+    monkeypatch.setattr(guard, "fraccion_de_habla", lambda _p: None)
+    ruta = _wav(tmp_path, "voz.wav", _tono(2.0))
+    permitido, motivo = decidir_subida(
+        ruta, permitir_nube=True, es_nube=True, permitir_sin_filtrar=True
+    )
+    assert permitido
+    assert "STT_ALLOW_UNFILTERED" in motivo, "debe quedar constancia en el log"
+
+
+def test_sin_vad_tampoco_toca_el_stt_local(tmp_path: Path, monkeypatch) -> None:
+    """Filtrar es cosa de la nube: en local no hay nada que subir."""
+    import zix.voice.upload_guard as guard
+
+    monkeypatch.setattr(guard, "fraccion_de_habla", lambda _p: None)
+    ruta = _wav(tmp_path, "voz.wav", _tono(2.0))
+    permitido, motivo = decidir_subida(ruta, permitir_nube=False, es_nube=False)
+    assert permitido, f"el STT local debe seguir funcionando: {motivo}"
+
+
+def test_la_config_lee_el_interruptor_de_filtrado() -> None:
+    assert Config().stt_allow_unfiltered is False, "fallar cerrado por defecto"
+    assert Config(stt_allow_unfiltered=True).stt_allow_unfiltered is True
+
+
 # ───────────────────── eleccion de proveedor (build_stt) ────────────────
 
 

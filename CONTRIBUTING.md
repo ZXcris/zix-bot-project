@@ -18,6 +18,23 @@ Copy-Item .env.example .env      # y rellena tus claves
 .\.venv\Scripts\python.exe -m pip install git-filter-repo   # si vas a tocar el historial
 ```
 
+### Paso obligatorio: descargar los modelos de openWakeWord
+
+```powershell
+.\.venv\Scripts\python.exe -c "from openwakeword.utils import download_models; download_models()"
+```
+
+Sin este paso **el VAD de Silero no arranca**, porque el paquete de pip **no
+incluye** los ficheros `.onnx` (son unos 25 MB). Consecuencias si te lo saltas:
+
+- El wake word no funciona: falta `hey_jarvis_v0.1.onnx`.
+- El freno de privacidad del STT no puede decidir y **cierra**, así que con
+  `STT_PROVIDER=groq` no se transcribe nada. Verás el motivo en el log.
+
+El CI hace este paso antes de testear, por eso allí los tests de privacidad
+tienen sentido. Si te salen rojos con algo parecido a *"Silero no esta
+disponible"*, casi siempre es que falta esto.
+
 Para una instalación **reproducible** (la recomendada al publicar una release):
 
 ```powershell
