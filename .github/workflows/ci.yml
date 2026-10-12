@@ -60,6 +60,9 @@ jobs:
         run: python scripts/setup_openwakeword_models.py
 
       - name: Suite completa
+        # shell: bash explicito. Por defecto Windows usa PowerShell, donde
+        # 'set -o pipefail' no existe y el paso muere antes de testear nada.
+        shell: bash
         run: |
           set -o pipefail
           python -m pytest tests/ -q 2>&1 | tee pytest-${{ matrix.os }}.txt
@@ -67,13 +70,18 @@ jobs:
       # Un fallo aqui dice solo 'algo se rompio'. Separado por areas, el paso
       # que se pone rojo dice si fue la UI, la voz o el nucleo, que es la
       # primera pregunta cuando se mira una ejecucion roja.
+      # always() porque si la suite entera falla, estos son los que dicen
+      # DONDE.
       - name: Tests de interfaz
+        if: always()
         run: python -m pytest tests/ -q -k "chat or home or config or login or seguridad"
 
       - name: Tests de voz y privacidad
+        if: always()
         run: python -m pytest tests/test_privacidad_stt.py tests/test_conversation.py tests/test_vad.py tests/test_audio.py -q
 
       - name: Tests del nucleo
+        if: always()
         run: python -m pytest tests/ -q --ignore=tests/test_zix_chat_ui.py --ignore=tests/test_zix_config_ui.py --ignore=tests/test_zix_home_ui.py --ignore=tests/test_zix_home_vacios.py --ignore=tests/test_zix_login_ui.py --ignore=tests/test_zix_ui_seguridad.py --ignore=tests/test_privacidad_stt.py --ignore=tests/test_conversation.py --ignore=tests/test_vad.py --ignore=tests/test_audio.py
 
       # Guardar el informe aunque los tests fallen. En el log de GitHub solo
