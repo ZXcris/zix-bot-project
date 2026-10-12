@@ -14,4 +14,4 @@ git-filter-repo>=2.47
 pip-audit>=2.10.1
 
 # Solo para ZX Ops (tests de opencode_adapter); no hace falta para el runtime
-playwright>=1.40
+playwright>=1.63.0
