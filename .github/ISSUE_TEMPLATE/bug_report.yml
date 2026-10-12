@@ -1,0 +1,83 @@
+name: Bug
+description: Algo no funciona como debería
+labels: ["bug", "necesita-reproduccion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por reportarlo. Cuanto más concreto sea el "cómo reproducir",
+        antes se arregla.
+
+        **Si es una vulnerabilidad, no uses esto**: sigue
+        [SECURITY.md](https://github.com/ZXcris/zix-bot-project/blob/main/SECURITY.md).
+
+  - type: textarea
+    id: que-pasa
+    attributes:
+      label: Qué pasa
+      description: Qué esperabas y qué obtuviste.
+      placeholder: Al decir "Hey ZIX" no se activa el micrófono y se queda escuchando.
+    validations:
+      required: true
+
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducirlo
+      value: |
+        1.
+        2.
+        3.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Qué esperabas
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: sistema
+    attributes:
+      label: Sistema
+      description: Windows 10, Windows 11, Linux... y la versión de Python.
+      placeholder: Windows 11, Python 3.12
+    validations:
+      required: true
+
+  - type: dropdown
+    id: donde
+    attributes:
+      label: ¿Dónde ocurre?
+      options:
+        - El micrófono no suena o no graba
+        - La palabra de activación no se detecta
+        - La transcripción sale mal o vacía
+        - ZIX responde mal o se equivoca
+        - Una herramienta no hace lo que le pido
+        - La interfaz (ventana web)
+        - Instalación / arranque
+        - Otro
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs o traza
+      description: |
+        Pega la salida de consola con `LOG_LEVEL=DEBUG`.
+        **Antes de pegarla, quita cualquier clave API que aparezca.**
+      render: shell
+
+  - type: checkboxes
+    id: revisado
+    attributes:
+      label: Antes de enviar
+      options:
+        - label: He quitado mis claves API de los logs
+        - label: He buscado si ya está reportado en Issues

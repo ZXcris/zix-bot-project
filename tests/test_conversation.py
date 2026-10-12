@@ -62,6 +62,11 @@ def make_config(**overrides) -> Config:
         # el filtro previo se desactiva aqui. El default del producto sigue
         # siendo 0.15 y lo prueban los tests de privacidad (test_privacidad_stt).
         stt_min_speech_ratio=0.0,
+        # Y con Silero ausente el filtro CIERRA en vez de dejar pasar, asi que
+        # poner solo el minimo a 0 no basta: hay que desactivar el filtro
+        # entero. Sin esto estos tests dependen de que el modelo .onnx este
+        # descargado en la maquina que los ejecuta.
+        stt_allow_unfiltered=True,
     )
     base.update(overrides)
     return Config(**base)
