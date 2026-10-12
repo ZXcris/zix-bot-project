@@ -64,6 +64,18 @@ jobs:
           set -o pipefail
           python -m pytest tests/ -q 2>&1 | tee pytest-${{ matrix.os }}.txt
 
+      # Un fallo aqui dice solo 'algo se rompio'. Separado por areas, el paso
+      # que se pone rojo dice si fue la UI, la voz o el nucleo, que es la
+      # primera pregunta cuando se mira una ejecucion roja.
+      - name: Tests de interfaz
+        run: python -m pytest tests/ -q -k "chat or home or config or login or seguridad"
+
+      - name: Tests de voz y privacidad
+        run: python -m pytest tests/test_privacidad_stt.py tests/test_conversation.py tests/test_vad.py tests/test_audio.py -q
+
+      - name: Tests del nucleo
+        run: python -m pytest tests/ -q --ignore=tests/test_zix_chat_ui.py --ignore=tests/test_zix_config_ui.py --ignore=tests/test_zix_home_ui.py --ignore=tests/test_zix_home_vacios.py --ignore=tests/test_zix_login_ui.py --ignore=tests/test_zix_ui_seguridad.py --ignore=tests/test_privacidad_stt.py --ignore=tests/test_conversation.py --ignore=tests/test_vad.py --ignore=tests/test_audio.py
+
       # Guardar el informe aunque los tests fallen. En el log de GitHub solo
       # se ven los ultimos kilobytes y a veces hay que mirar justo el que
       # importa; aqui queda entero y se descarga desde la ejecucion.
