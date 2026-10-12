@@ -98,6 +98,12 @@ class Config:
     # Tope de duracion de lo que se transcribe, para acotar el peor caso de una
     # activacion falsa.
     stt_max_seconds: float = 15.0
+    # Si Silero no esta disponible, el freno normalmente CIERRA (no se sube
+    # nada). Poner esto a True devuelve el comportamiento antiguo: subir sin
+    # filtrar. Ojo: con esto, el filtro deja de existir en silencio, que es
+    # justo lo que se intento evitar. Deberia hacer falta solo si has
+    # comprobado que el audio que manda ZIX es tuyo.
+    stt_allow_unfiltered: bool = False
 
     # --- TTS (v0.2) ---
     piper_voice: str = "es_MX-claude-high"
@@ -162,6 +168,10 @@ class Config:
             in {"1", "true", "yes", "on"},
             stt_min_speech_ratio=float(os.getenv("STT_MIN_SPEECH_RATIO", "0.15")),
             stt_max_seconds=float(os.getenv("STT_MAX_SECONDS", "15.0")),
+            stt_allow_unfiltered=os.getenv("STT_ALLOW_UNFILTERED", "0")
+            .strip()
+            .lower()
+            in {"1", "true", "yes", "on"},
             piper_voice=os.getenv("PIPER_VOICE", "es_MX-claude-high").strip(),
             piper_models_dir=os.getenv("PIPER_MODELS_DIR", "models/piper").strip(),
             piper_espeak_data_dir=os.getenv(

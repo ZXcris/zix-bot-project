@@ -1,0 +1,51 @@
+name: Propuesta
+description: Idea, mejora o algo que falta
+labels: ["mejora"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Para algo que ya está roto, usa la plantilla de **Bug**.
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: Qué te gustaría
+      description: Con tus palabras. No hace falta que esté escrito formalmente.
+    validations:
+      required: true
+
+  - type: textarea
+    id: problema
+    attributes:
+      label: "Qué problema te resuelve"
+      description: >-
+        Esto es lo que de verdad importa. ¿Qué te pasa hoy que no puedes hacer?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: zona
+    attributes:
+      label: "¿Dónde tocaría?"
+      options:
+        - No lo sé todavía
+        - "Voz (micrófono, palabra de activación, TTS)"
+        - "STT (transcripción)"
+        - Herramientas y agentes
+        - Interfaz web
+        - ZX Ops
+        - Documentación
+        - Otro
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: zonas
+    attributes:
+      label: Si tu propuesta toca estas zonas, avisa antes de programarla
+      options:
+        - label: "src/zix/ es el núcleo y los cambios afectan al bucle de audio"
+        - label: "La CSP de apps/zix-ui/"
+        - label: "La lista de open_app"
+        - label: No toco ninguna
