@@ -60,7 +60,20 @@ jobs:
         run: python scripts/setup_openwakeword_models.py
 
       - name: Suite completa
-        run: python -m pytest tests/ -q
+        run: |
+          set -o pipefail
+          python -m pytest tests/ -q 2>&1 | tee pytest-${{ matrix.os }}.txt
+
+      # Guardar el informe aunque los tests fallen. En el log de GitHub solo
+      # se ven los ultimos kilobytes y a veces hay que mirar justo el que
+      # importa; aqui queda entero y se descarga desde la ejecucion.
+      - name: Subir el informe de los tests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-${{ matrix.os }}
+          path: pytest-${{ matrix.os }}.txt
+          if-no-files-found: ignore
 
   interfaz:
     name: Comprobaciones de la interfaz
