@@ -51,7 +51,7 @@ jobs:
       # tests de privacidad fallan por el motivo equivocado. Tambien evita
       # que el fallo se confunda con un fallo de logica.
       - name: Descargar los modelos de openWakeWord
-        run: python -c "from openwakeword.utils import download_models; download_models()"
+        run: python scripts/setup_openwakeword_models.py
 
       - name: Suite completa
         run: python -m pytest tests/ -q
@@ -79,7 +79,7 @@ jobs:
       # Mismo motivo que en el job de pruebas: sin los modelos de openWakeWord
       # el VAD no arranca y los tests de configuracion fallan al construirla.
       - name: Descargar los modelos de openWakeWord
-        run: python -c "from openwakeword.utils import download_models; download_models()"
+        run: python scripts/setup_openwakeword_models.py
 
       - name: Comprobar que la UI no inventa datos ni sale a la red
         run: python -m pytest tests/ -q -k "chat or home or config or login or seguridad"
