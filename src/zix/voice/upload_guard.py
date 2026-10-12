@@ -86,6 +86,7 @@ def decidir_subida(
     es_nube: bool,
     minimo_fraccion: float = 0.15,
     max_segundos: float = 15.0,
+    permitir_sin_filtrar: bool = False,
 ) -> tuple[bool, str]:
     """Decide si el audio de `path` debe enviarse a transcribir.
 
@@ -93,6 +94,16 @@ def decidir_subida(
 
     Orden de las comprobaciones: primero el interruptor de nube, porque es la
     decision que el usuario ha tomado y debe prevalecer sobre cualquier otra.
+
+    Sin VAD se CIERRA la puerta en vez de abrirla (cambio del 2026-12-10).
+    Antes devolvia True con "Sin VAD disponible: no se puede filtrar, se
+    continua", y eso era un fallo de seguridad: openwakeword NO trae sus
+    modelos .onnx en el paquete de pip, hay que descargarlos aparte. En
+    cualquier instalacion limpia el freno no existia, el audio subia entero
+    y el unico aviso era una linea de log que el usuario no iba a leer.
+
+    Un freno de privacidad que puede desaparecer en silencio no es un freno.
+    Para desactivarlo a proposito: STT_ALLOW_UNFILTERED=1.
     """
     if es_nube and not permitir_nube:
         return False, (
@@ -112,12 +123,34 @@ def decidir_subida(
         )
 
     fraccion = fraccion_de_habla(path)
-    if fraccion is not None and fraccion < minimo_fraccion:
+
+    if fraccion is None:
+        if not es_nube:
+            # STT local: el audio no sale del equipo, asi que este filtro no
+            # tiene nada que proteger. Cerrar aqui dejaria a ZIX sin poder
+            # escuchar en absoluto, que seria un fallo grave por un beneficio
+            # de privacidad cero.
+            return True, (
+                "STT local: el audio no sale del equipo, no hay nada que filtrar."
+            )
+        if permitir_sin_filtrar:
+            return True, (
+                "Sin VAD y STT_ALLOW_UNFILTERED=1: se sube SIN filtrar, "
+                "a riesgo propio."
+            )
+        return False, (
+            "Silero no esta disponible, asi que no se puede comprobar si hay "
+            "voz: no se sube nada. Causa habitual: openwakeword no trae sus "
+            "modelos .onnx en el paquete de pip. Descargalos con "
+            "python -c \"from openwakeword.utils import download_models; "
+            "download_models()\", o pon STT_ALLOW_UNFILTERED=1 si prefieres "
+            "arriesgarte."
+        )
+
+    if fraccion < minimo_fraccion:
         return False, (
             f"Silero solo detecta voz en el {fraccion*100:.0f}% del audio "
             f"(minimo {minimo_fraccion*100:.0f}%): descartado sin subir nada."
         )
 
-    if fraccion is None:
-        return True, "Sin VAD disponible: no se puede filtrar, se continua."
     return True, f"Voz detectada en el {fraccion*100:.0f}% del audio."

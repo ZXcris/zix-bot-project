@@ -14,7 +14,9 @@ no ofrecerla. Si necesitas una terminal, ábrela tú.
 """
 from __future__ import annotations
 
+import ntpath
 import os
+import posixpath
 import shutil
 import subprocess
 from typing import Optional
@@ -72,10 +74,23 @@ KNOWN_APPS: dict[str, list[str]] = {
 }
 
 
+def _solo_nombre(ruta: str) -> str:
+    """Ultimo componente de una ruta,的分隔 correctos en cualquier sistema.
+
+    os.path.basename parte por '/' en Linux y por '\\' en Windows, asi que en
+    Linux una ruta tipo C:\\Windows\\System32\\cmd.exe salia entera y la
+    segunda barrera no la reconhecia. ntpath y posixpath.partizan los dos
+    estilos,asi que se aplican los dos.
+    """
+    return posixpath.basename(ntpath.basename(ruta)).lower()
+
+
 def _resolve_candidates(candidates: list[str]) -> Optional[str]:
     for candidate in candidates:
         expanded = os.path.expandvars(candidate)
-        if os.sep in expanded or "/" in expanded:
+        # '\\' cuenta como separador en los dos sistemas: si no, en Linux una
+        # ruta de Windows caeria en el shutil.which() de abajo.
+        if "/" in expanded or "\\" in expanded:
             if os.path.isfile(expanded):
                 return expanded
         else:
@@ -98,7 +113,11 @@ def open_app(app: str) -> str:
         return f"No se encontró el ejecutable de '{app}' en este equipo."
     # Segunda barrera: aunque alguien metiese una shell en la lista, aqui se
     # corta. Se compara solo el nombre del ejecutable, no la ruta completa.
-    ejecutable = os.path.basename(resolved).lower()
+    # El nombre se saca con _solo_nombre, no con os.path.basename: en Linux
+    # os.path.basename no parte por '\\' y una ruta de Windows se colaba
+    # entera, con lo que la barrera no la veia. Lo detecto el CI al correr la
+    # suite tambien en Linux (test_rechaza_una_ruta_de_windows_en_cualquier_sistema).
+    ejecutable = _solo_nombre(resolved)
     if ejecutable in FORBIDDEN_BINARIES:
         return (
             f"Rechazada: '{app}' resolvería a un intérprete de comandos "
