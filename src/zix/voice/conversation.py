@@ -216,6 +216,7 @@ class ConversationManager:
             es_nube=self._es_stt_en_la_nube(),
             minimo_fraccion=self._config.stt_min_speech_ratio,
             max_segundos=self._config.stt_max_seconds,
+            permitir_sin_filtrar=self._config.stt_allow_unfiltered,
         )
         logger.info("Guarda de subida: %s (%s)", "permite" if permitido else "descarta", motivo)
         if not permitido:
