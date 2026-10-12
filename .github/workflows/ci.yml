@@ -80,14 +80,29 @@ jobs:
         if: always()
         run: python -m pytest tests/test_privacidad_stt.py tests/test_conversation.py tests/test_vad.py tests/test_audio.py -q
 
-      - name: Test del nucleo por fichero
+      - name: nucleo test_agent_loop
         if: always()
-        run: |
-          set -o pipefail
-          for f in tests/test_agent_loop.py tests/test_calculator.py tests/test_open_app.py tests/test_registry.py tests/test_wakeword_tools.py tests/test_xkiro_provider.py; do
-            echo "===== $f ====="
-            python -m pytest "$f" -q || echo "FALLO_EN=$f"
-          done
+        run: python -m pytest tests/test_agent_loop.py -q
+
+      - name: nucleo test_calculator
+        if: always()
+        run: python -m pytest tests/test_calculator.py -q
+
+      - name: nucleo test_open_app
+        if: always()
+        run: python -m pytest tests/test_open_app.py -q
+
+      - name: nucleo test_registry
+        if: always()
+        run: python -m pytest tests/test_registry.py -q
+
+      - name: nucleo test_wakeword_tools
+        if: always()
+        run: python -m pytest tests/test_wakeword_tools.py -q
+
+      - name: nucleo test_xkiro_provider
+        if: always()
+        run: python -m pytest tests/test_xkiro_provider.py -q
 
       # Guardar el informe aunque los tests fallen. En el log de GitHub solo
       # se ven los ultimos kilobytes y a veces hay que mirar justo el que
