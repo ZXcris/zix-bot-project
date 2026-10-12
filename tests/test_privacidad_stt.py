@@ -41,6 +41,31 @@ def _silencio(segundos: float) -> np.ndarray:
     return np.zeros(int(segundos * SR), dtype=np.int16)
 
 
+def silero_disponible() -> bool:
+    """True si el VAD arranca de verdad, no solo si el modulo se importa.
+
+    Importar openwakeword no basta: el paquete de pip no trae sus modelos
+    .onnx, asi que en una instalacion limpia VAD() revienta. Estos tests
+    miden lo que hace Silero DE VERDAD, asi que si no esta, no se pueden
+    medir: es un skip honesto, no un fallo. La logica del freno se prueba
+    siempre, sin depender del modelo (ver test_sin_vad_no_sube).
+    """
+    try:
+        from openwakeword.vad import VAD
+
+        VAD()
+    except Exception:
+        return False
+    return True
+
+
+requiere_silero = pytest.mark.skipif(
+    not silero_disponible(),
+    reason="falta silero_vad.onnx; bajalo con "
+    "python scripts/setup_openwakeword_models.py",
+)
+
+
 # ────────────────────── el interruptor de nube ──────────────────────────
 
 
@@ -65,13 +90,21 @@ def test_el_interruptor_no_afecta_al_stt_local(tmp_path: Path) -> None:
 
 
 def test_con_la_nube_permitida_pasa_el_filtro_local(tmp_path: Path) -> None:
+    # minimo_fraccion=0.0 y permitir_sin_filtrar: aqui se prueba que el
+    # interruptor de nube NO bloquea, no el filtro. Dejar el filtro puesto
+    # hacia depender de que silero_vad.onnx este descargado en la maquina.
     ruta = _wav(tmp_path, "voz.wav", _tono(2.0))
     permitido, _ = decidir_subida(
-        ruta, permitir_nube=True, es_nube=True, minimo_fraccion=0.0
+        ruta,
+        permitir_nube=True,
+        es_nube=True,
+        minimo_fraccion=0.0,
+        permitir_sin_filtrar=True,
     )
     assert permitido
 
 
+@requiere_silero
 def test_un_tono_no_es_voz_y_se_descarta(tmp_path: Path) -> None:
     """Silero hace bien su trabajo: un seno de 220 Hz no es habla.
 
@@ -101,6 +134,7 @@ def test_la_puerta_se_abre_con_audio_real(tmp_path: Path) -> None:
 # ─────────────────────────── filtros locales ────────────────────────────
 
 
+@requiere_silero
 def test_el_silencio_no_sube(tmp_path: Path) -> None:
     """Un silencio puro no puede acabar transcrito en un servidor."""
     ruta = _wav(tmp_path, "silencio.wav", _silencio(3.0))
@@ -138,6 +172,7 @@ def test_fraccion_de_habla_devuelve_none_si_no_puede_decidir(tmp_path: Path) -> 
     assert fraccion_de_habla(roto) is None
 
 
+@requiere_silero
 def test_fraccion_de_habla_detecta_el_tono(tmp_path: Path) -> None:
     fraccion = fraccion_de_habla(_wav(tmp_path, "tono.wav", _tono(2.0)))
     assert fraccion is None or 0.0 <= fraccion <= 1.0

@@ -47,10 +47,16 @@ jobs:
           python -m pip install -e ".[dev]"
 
       # openwakeword NO trae sus modelos .onnx en el paquete de pip. Sin esto,
-      # el VAD de Silero no arranca, decidir_subida no puede filtrar, y los
-      # tests de privacidad fallan por el motivo equivocado. Tambien evita
-      # que el fallo se confunda con un fallo de logica.
+      # el VAD de Silero no arranca y decidir_subida no puede filtrar.
+      #
+      # continue-on-error a proposito: la suite NO depende de que la descarga
+      # funcione (los tests que miden a Silero se saltan sin el, y la logica
+      # del freno se prueba siempre con un VAD simulado). Si esta descarga
+      # falla en un runner, eso es un problema de red o del runner, no del
+      # codigo, y no debe poner rojo el CI. El aviso se ve igual: aparecen
+      # mas tests saltados.
       - name: Descargar los modelos de openWakeWord
+        continue-on-error: true
         run: python scripts/setup_openwakeword_models.py
 
       - name: Suite completa
@@ -76,9 +82,10 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
 
-      # Mismo motivo que en el job de pruebas: sin los modelos de openWakeWord
-      # el VAD no arranca y los tests de configuracion fallan al construirla.
+      # Mismo motivo que en el job de pruebas, y mismo criterio: si falla, se ve
+      # en los skips, no como un fallo del codigo.
       - name: Descargar los modelos de openWakeWord
+        continue-on-error: true
         run: python scripts/setup_openwakeword_models.py
 
       - name: Comprobar que la UI no inventa datos ni sale a la red
