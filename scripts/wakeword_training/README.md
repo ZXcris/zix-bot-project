@@ -130,6 +130,68 @@ memorización. Este script existe para que eso no vuelva a pasar.
           → responde por voz → vuelve a esperar "Hey ZIX"
 ```
 
+## Pipeline de una sola pasada (`entrenar_colab.sh`, 2026-10-10)
+
+El flujo por celdas de arriba falló tres veces seguidas. Este script lo
+sustituye: es **idempotente** (se puede relanzar sin romper nada) y escribe un
+log en `/content/zix_run.log`.
+
+### Cómo se usa
+
+Sube `heyzix_clips.zip` (tus 27 clips) al panel **Archivos** de Colab y ejecuta:
+
+```
+!chmod +x /content/entrenar_colab.sh
+!(setsid nohup bash /content/entrenar_colab.sh > /content/run.log 2>&1 < /dev/null &)
+```
+
+Va de 1 a 20: dependencias → parches → datos → clips → negativos → reales →
+augment → entrenamiento. Cada paso comprueba si ya está hecho y se salta.
+
+### Los tres fallos que había (y por qué importan)
+
+| Error | Causa real | Arreglo |
+|---|---|---|
+| `UnpicklingError: invalid load key, b'<'` | DeepPhonemizer descarga un **HTML de error** en vez del modelo de espeak: el primer byte `<` no es un pickle | `patch_adversarial.py` sustituye `generate_adversarial_texts()` por confusables generadas a mano |
+| `StopIteration` en `utils.py:575` | `negative_train/` estaba **vacío**, así que `negative_clips_train = []` y `augment_clips([])` no puede dar nada | `generar_negativos.py` crea 1268 negativos duros |
+| `FileNotFoundError: negative_test` | Faltaba la cuarta carpeta que openWakeWord espera | `generar_negativos.py` deja las cuatro |
+
+> El `StopIteration` **nunca fue por ficheros viejos de una corrida anterior**,
+> que era la hipótesis más obvia y la falsa. `SESSION_STATE.md` decía
+> "augment OK" desde hacía meses y nunca lo estuvo.
+
+### Ficheros
+
+| Fichero | Para qué |
+|---|---|
+| `entrenar_colab.sh` | El pipeline entero, 20 pasos |
+| `generar_negativos.py` | Negativos duros: confusables × 4 voces × 5 ritmos, mezclados con ESC-50 a SNR 0-12 dB |
+| `patch_adversarial.py` | Parchea `data.py` para no depender de DeepPhonemizer |
+| `inyectar_clips_reales.py` | Mete tus 27 clips con sobremuestreo ×100 y aparta el 15% como retenido |
+| `check_adversarial.py` | Comprueba que el parche no dejó la frase exacta entre las negativas |
+
+### Por qué ×100 y no solo "añadirlos"
+
+En septiembre la celda 4b metía los clips reales en una carpeta con ~14 000
+sintéticos: **27/14 027 = 0,19 %** de voz real. Con sobremuestreo ×100 la voz
+real sube al **28 %** del set positivo, que es donde la DNN empieza a girar
+hacia el hablante.
+
+El 15% retenido va a `/content/zix_real_heldout/` y **no lo ve el modelo**. Es
+lo único que dirá la verdad después: bájalo y pásalo por `verify_heldout.py`.
+
+### Tiempo real medido (T4)
+
+| Paso | Tiempo |
+|---|---|
+| Dependencias y parches | ~12 min |
+| Descargar RIRs + ESC-50 + features | ~8 min |
+| Generar 5000 clips sintéticos | ~35 min |
+| Multivoces (1200) | ~12 min |
+| Negativos (1268) | ~4 min |
+| **augment** | ~9 min |
+| **entrenar** (30 000 pasos × 3 secuencias) | **~21 min** |
+
 ## Referencias
 
 - Pipeline oficial: `dscripka/openWakeWord` → `notebooks/automatic_model_training.ipynb`
