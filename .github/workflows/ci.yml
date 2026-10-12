@@ -80,29 +80,20 @@ jobs:
         if: always()
         run: python -m pytest tests/test_privacidad_stt.py tests/test_conversation.py tests/test_vad.py tests/test_audio.py -q
 
-      - name: nucleo test_agent_loop
+      - name: Tests del nucleo
         if: always()
-        run: python -m pytest tests/test_agent_loop.py -q
-
-      - name: nucleo test_calculator
-        if: always()
-        run: python -m pytest tests/test_calculator.py -q
-
-      - name: nucleo test_open_app
-        if: always()
-        run: python -m pytest tests/test_open_app.py -q
-
-      - name: nucleo test_registry
-        if: always()
-        run: python -m pytest tests/test_registry.py -q
-
-      - name: nucleo test_wakeword_tools
-        if: always()
-        run: python -m pytest tests/test_wakeword_tools.py -q
-
-      - name: nucleo test_xkiro_provider
-        if: always()
-        run: python -m pytest tests/test_xkiro_provider.py -q
+        run: >-
+          python -m pytest tests/ -q
+          --ignore=tests/test_zix_chat_ui.py
+          --ignore=tests/test_zix_config_ui.py
+          --ignore=tests/test_zix_home_ui.py
+          --ignore=tests/test_zix_home_vacios.py
+          --ignore=tests/test_zix_login_ui.py
+          --ignore=tests/test_zix_ui_seguridad.py
+          --ignore=tests/test_privacidad_stt.py
+          --ignore=tests/test_conversation.py
+          --ignore=tests/test_vad.py
+          --ignore=tests/test_audio.py
 
       # Guardar el informe aunque los tests fallen. En el log de GitHub solo
       # se ven los ultimos kilobytes y a veces hay que mirar justo el que

@@ -75,6 +75,23 @@ def test_la_segunda_barrara_corta_aunque_metan_una_shell(monkeypatch) -> None:
     assert "intérprete de comandos" in respuesta
 
 
+def test_rechaza_una_ruta_de_windows_en_cualquier_sistema(monkeypatch) -> None:
+    """La segunda barrera tiene que ver una ruta de Windows tambien en Linux.
+
+    Antes se comparaba solo os.path.basename, que en Linux parte por '/' y
+    deja 'C:\\Windows\\System32\\cmd.exe' enterita: el nombre no casaba con
+    ningun prohibido y la barrera se saltaba. Lo detecto el CI al correr la
+    suite en Linux.
+    """
+    monkeypatch.setitem(KNOWN_APPS, "atajo", [r"C:\Windows\System32\cmd.exe"])
+    monkeypatch.setattr(
+        "zix.tools.open_app._resolve_candidates",
+        lambda c: r"C:\Windows\System32\cmd.exe",
+    )
+    respuesta = open_app("atajo")
+    assert "Rechazada" in respuesta, f"una shell debe rechazarse siempre: {respuesta}"
+
+
 def test_el_nombre_de_la_herramienta_no_anuncia_shells() -> None:
     """La descripcion que ve el modelo es el contrato: no debe ofrecer terminal."""
     descripcion = open_app_tool.description.lower()
