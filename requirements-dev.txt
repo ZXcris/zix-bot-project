@@ -10,8 +10,17 @@ pytest>=9.1.1
 git-filter-repo>=2.47
 
 # Auditoria de dependencias (opcional; el inventario del 2026-10-03 se hizo
-# contra la API de OSV sin instalar nada)
-pip-audit>=2.10.1
+# contra la API de OSV sin instalar nada).
+#
+# Con suelo y techo de MAJOR: llegan las actualizaciones de la linea 2.x
+# (con ellas los parches de seguridad) pero no se salta a una major que
+# pueda cambiar el formato de la salida. El CI instala la misma cosa.
+#
+# pip-audit NO entra en requirements.lock: es la herramienta que audita el
+# lock, no parte del entorno que audita. Meterla arrastraria sus propias
+# dependencias al lock (pypdf, reportlab, pillow) sin que nada de ZIX las
+# necesite.
+pip-audit>=2.10.1,<3
 
 # Solo para ZX Ops (tests de opencode_adapter); no hace falta para el runtime
 playwright>=1.63.0

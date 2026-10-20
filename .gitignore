@@ -19,6 +19,9 @@ dist/
 
 # Tests
 .pytest_cache/
+# Artefacto de 'pytest --cov' (medidor de cobertura). No es codigo.
+.coverage
+.coverage.*
 
 # Logs de corridas y verificación (evidencia local, no versionar)
 *.log

@@ -6,7 +6,13 @@ build-backend = "setuptools.build_meta"
 name = "zix"
 version = "0.2.0"
 description = "ZIX-PC: asistente personal de IA por voz para Windows (núcleo del agente + pipeline de voz)"
-requires-python = ">=3.10"
+# Python 3.12 es el minimo REAL, no una preferencia.
+#
+# Antes decia '>=3.10', pero las versiones fijadas en requirements.lock no
+# lo soportan: numpy 2.5.2 exige '>=3.12' y scipy 1.18.0 tambien. Quien
+# seguia los metadatos en 3.10 o 3.11 se encontraba con un numpy imposible
+# de instalar. El CI usa 3.12 y el venv de desarrollo, 3.14.
+requires-python = ">=3.12"
 dependencies = [
     "groq",
     "python-dotenv",

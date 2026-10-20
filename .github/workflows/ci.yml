@@ -59,6 +59,23 @@ jobs:
         continue-on-error: true
         run: python scripts/setup_openwakeword_models.py
 
+      - name: Comprobar los modelos de openWakeWord
+        # El paso anterior puede fallar solo por la red. Aqui se mira el
+        # resultado y se dice con nombre y apellidos, en vez de dejar que
+        # los tests se omitan sin que quede constancia.
+        #
+        # NO tumba el job: una descarga fallida no es un fallo del codigo.
+        # Lo que si hace es dejar un aviso visible en el resumen de la
+        # ejecucion, y los tests que dependen de estos modelos se OMITEN
+        # (skip), no se dan por aprobados.
+        run: |
+          codigo=0
+          python scripts/setup_openwakeword_models.py --comprobar || codigo=$?
+          if [ "$codigo" -ne 0 ]; then
+            echo "::warning::Faltan modelos de openWakeWord (la red o el runner fallaron). Los tests que miden audio real se OMITEN, no se aprueban."
+          fi
+          exit 0
+
       - name: Suite completa
         # shell: bash explicito. Por defecto Windows usa PowerShell, donde
         # 'set -o pipefail' no existe y el paso muere antes de testear nada.
@@ -145,20 +162,154 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Auditar las dependencias declaradas
+      - name: Instalar pip-audit
         run: |
-          python -m pip install --upgrade pip-audit
-          # Auditar requirements.txt, NO el entorno instalado.
+          python -m pip install --upgrade pip
+          # Con suelo y sin techo de MAJOR: la herramienta se mantiene
+          # actualizada (las versiones dentro de 2.x siguen llegando, y con
+          # ellas los parches de seguridad) pero no puede saltar a una major
+          # que cambie el formato de la salida que se lee aqui.
           #
-          # Antes era 'pip_audit --strict' a secas, y este job no instala el
-          # proyecto: auditaba el entorno base de Ubuntu (pip, setuptools) y
-          # se daba por bueno. No miraba ninguna dependencia nuestra, o sea
-          # que hacia exactamente nada.
+          # pip-audit NO esta en requirements.lock, y a proposito: es la
+          # herramienta que audita el lock, no parte del entorno que audita.
+          # Por eso su version se fija aqui y no con hashes.
+          python -m pip install "pip-audit>=2.10.1,<3"
+
+      # Los tres pasos siguientes auditan tres ficheros distintos, y no es
+      # repeticion: cada uno responde a una pregunta distinta.
+      #
+      #   1) requirements.lock      -> lo que se instala DE VERDAD
+      #   2) requirements.txt       -> lo declarado, sin fijar
+      #   3) requirements-dev.txt   -> lo declarado de desarrollo, sin fijar
+      #
+      # --strict hace que el paso falle si la RECOLECCION de dependencias
+      # falla, no solo si hay vulnerabilidades. Sin el, un 'pip install -r'
+      # roto (paquete retirado, red caida) puede pasar por limpio.
+
+      - name: Auditar el entorno real (requirements.lock)
+        run: |
+          # Este es el fichero que importa: fija las versiones con hashes y
+          # es lo que instala el job de reproducibilidad, para produccion y
+          # para desarrollo, con sus transitivas.
           #
-          # Con -r se resuelven las declaradas. Tambien evita el otro fallo:
-          # 'zix' es un paquete local que no esta en PyPI, y al auditar el
-          # entorno abortaba con exit 1 en todos los push.
+          # Auditar solo requirements.txt (lo que se hacia antes) daba verde
+          # SIEMPRE: no fija versiones, asi que pip-audit resolvia a la
+          # ultima publicada y no encontraba nada. El 2026-10-19 se comprobo
+          # que el lock tenia 9 CVEs que ese control no veia:
+          #   urllib3 2.7.0 (PYSEC-2026-4175/4176/4177) -> 2.8.0
+          #   pypdf   6.18.0 (PYSEC-2026-4154/4155/4156/4157/4159/4160) -> 6.19.0
+          #
+          # --require-hashes porque el lock lleva hashes: asi tambien se
+          # comprueba que el fichero de hecho los lleva.
+          python -m pip_audit -r requirements.lock --require-hashes --strict --progress-spinner off
+
+      - name: Auditar lo declarado sin fijar (aviso temprano)
+        run: |
+          # requirements.txt y requirements-dev.txt NO fijan versiones:
+          # resuelven a lo ultimo publicado. Su valor es otro: avisan de que
+          # ha aparecido un CVE con arreglo disponible aunque el lock aun no
+          # se haya regenerado. Si esto falla y el lock esta limpio, hay un
+          # parche pendiente de aplicar al lock.
+          #
+          # Este paso es el que CUBRE EL ENTORNO DE DESARROLLO, que antes no
+          # se auditaba en absoluto: playwright, git-filter-repo y demas.
           python -m pip_audit -r requirements.txt --strict --progress-spinner off
+          python -m pip_audit -r requirements-dev.txt --strict --progress-spinner off
+
+  reproducibilidad:
+    name: Entorno reproducible (lock)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      # Mismo motivo que en el job de pruebas: en Linux el wheel de
+      # sounddevice instala, pero al importar necesita PortAudio, que el
+      # runner no trae.
+      - name: PortAudio (solo Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq portaudio19-dev libsndfile1
+
+      - name: Comprobar que el lock y lo declarado no se han separado
+        run: |
+          # Si alguien anade una dependencia a requirements.txt o a
+          # requirements-dev.txt y no regenera requirements.lock, el entorno
+          # reproducible se queda viejo sin que nada lo diga. Esta
+          # comprobacion no necesita herramientas nuevas: solo compara
+          # listas de nombres, y ademas comprueba que la version fijada
+          # cumpla la restriccion declarada.
+          python scripts/check_lock_sync.py
+
+      # openwakeword NO trae sus modelos .onnx en el paquete de pip. Sin
+      # ellos no arranca el VAD de Silero y la puerta de privacidad del STT
+      # se queda cerrada, y los tests que miden audio real fallan.
+      #
+      # continue-on-error a proposito, igual que en el job de pruebas: si
+      # la descarga falla, eso es un problema de red o del runner, no del
+      # codigo, y no debe poner rojo el CI. El aviso se ve igual en los
+      # skips.
+      - name: Descargar los modelos de openWakeWord
+        continue-on-error: true
+        run: python scripts/setup_openwakeword_models.py
+
+      - name: Comprobar los modelos de openWakeWord
+        # Mismo criterio que en el job de pruebas: si la descarga falla, se
+        # dice explicitamente que los tests afectados se OMITEN, en vez de
+        # dejar el fallo escondido detras de un continue-on-error.
+        run: |
+          codigo=0
+          python scripts/setup_openwakeword_models.py --comprobar || codigo=$?
+          if [ "$codigo" -ne 0 ]; then
+            echo "::warning::Faltan modelos de openWakeWord (la red o el runner fallaron). Los tests que miden audio real se OMITEN, no se aprueban."
+          fi
+          exit 0
+
+      - name: Instalar EXACTAMENTE lo que dice el lock
+        run: |
+          # --require-hashes hace que pip compruebe el hash de cada fichero
+          # descargado. Si alguien cambiase un hash del lock, esto falla.
+          python -m pip install --require-hashes -r requirements.lock
+          # El paquete local va con --no-deps: sus dependencias ya estan
+          # fijadas por el lock, y sin --no-deps pip volveria a resolverlas
+          # y podria meter versiones distintas de las fijadas.
+          python -m pip install -e . --no-deps
+
+      - name: Comprobar que el lock no tiene dependencias de mas
+        run: |
+          # Esta comprobacion necesita las dependencias INSTALADAS (lee los
+          # metadatos del entorno), asi que va DESPUES de instalar.
+          #
+          # Atrapa un fallo real que ya se dio: pypdf, reportlab y pillow
+          # estaban en el lock porque los arrastra pip-audit, la herramienta
+          # que audita el lock. No los necesita nada de ZIX, y sus
+          # requirentes (pip-audit, pip-requirements-parser) no estaban en
+          # el lock: era incoherente.
+          python scripts/check_lock_sync.py --sin-huerfanos
+
+      - name: Suite completa sobre el entorno fijado
+        # shell: bash explicito, por el mismo motivo que en el job de
+        # pruebas: en Windows, PowerShell no tiene 'set -o pipefail'.
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m pytest tests/ -q 2>&1 | tee pytest-lock-${{ matrix.os }}.txt
+
+      - name: Subir el informe de los tests
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-lock-${{ matrix.os }}
+          path: pytest-lock-${{ matrix.os }}.txt
+          if-no-files-found: ignore
 
   secretos:
     name: Secretos en el historial
