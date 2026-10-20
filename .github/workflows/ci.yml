@@ -158,7 +158,24 @@ jobs:
 
   dependencias:
     name: CVEs conocidas
-    runs-on: ubuntu-latest
+    # Este job corre en WINDOWS a proposito, y por un motivo concreto que
+    # solo se ve mirando el log de pip-audit:
+    #
+    # pip-audit resuelve el fichero de requisitos antes de auditarlo, con
+    # 'pip install --dry-run -r <fichero>' y SIN --no-deps (esa opcion solo
+    # decide que paquetes se auditan, no si se resuelve). Al resolver en
+    # Linux, openwakeword 0.6.0 arrastra 'tflite-runtime;
+    # platform_system == "Linux"', que no tiene wheel para cp312 en Linux
+    # (0 de sus 9 versiones en PyPI). El lock, al fijar versiones, no
+    # deja que pip retroceda a openwakeword 0.4.0 como sí hace con la
+    # instalacion flotante, y la resolucion falla.
+    #
+    # En Windows el mismo lock se instala bien (comprobado: 38 s de
+    # instalacion real en un venv limpio), asi que aqui se audita.
+    #
+    # Los dos ficheros declarados (requirements.txt y requirements-dev.txt)
+    # no dependen de la plataforma, asi que auditarlos aqui es igual.
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
 
