@@ -35,9 +35,29 @@ v0.2 (actual):  Voz → ConversationManager → Agent → Groq API → Piper →
 ## Requisitos
 
 - Windows 10/11
-- Python 3.10+ (probado con 3.14)
-- API key gratuita de Groq: <https://console.groq.com> (sin tarjeta)
+- Python 3.12+ (probado con 3.14; 3.12 es el mínimo real de las dependencias fijadas)
 - Micrófono y altavoz (solo para `python -m zix.voice_main`)
+- **Una** de estas dos para el cerebro de ZIX:
+  - **Ollama local** (recomendado en este equipo): sin cuota, sin tokens y
+    sin que salga nada de internet. Instala Ollama, `ollama pull
+    openbmb/minicpm-v4.6` y pon `AI_PROVIDER=ollama` en `.env`.
+  - **API key gratuita de Groq**: <https://console.groq.com> (sin tarjeta)
+
+### Motor local con Ollama
+
+```powershell
+ollama pull openbmb/minicpm-v4.6   # el único de los tres locales que
+                                    # emite tool calls de verdad
+```
+
+El agente de ZIX vive de las tools, así que el modelo tiene que saber
+llamarlas. De los modelos instalados en este equipo, **solo
+`openbmb/minicpm-v4.6` las usa**: `phi4-mini` las ignora y `qwen2.5-coder`
+devuelve el JSON como texto. Con esos dos, ZIX contesta pero no puede hacer
+nada.
+
+En CPU va lento (~7 palabras/s) y el primer turno tarda más, porque el modelo
+pesa 1,5 GB y hay que cargarlo en RAM.
 
 ## Instalación
 
@@ -52,7 +72,9 @@ python scripts/setup_voice_models.py   # descarga respaldo hey_jarvis + voz Pipe
 
 ```powershell
 Copy-Item .env.example .env
-# Abre .env y pega tu clave en GROQ_API_KEY
+# Elige cerebro:
+#   AI_PROVIDER=ollama   -> motor local, sin clave y sin cuota
+#   AI_PROVIDER=groq     -> nube, necesitas GROQ_API_KEY
 ```
 
 La clave se lee **solo** desde `.env` (ignorado por git). Nunca se escribe en el código.

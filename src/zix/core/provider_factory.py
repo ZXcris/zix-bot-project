@@ -9,6 +9,7 @@ from __future__ import annotations
 from ..config import Config
 from .ai_provider import AIProvider
 from .groq_provider import GroqProvider
+from .ollama_provider import OllamaProvider
 from .xkiro_provider import XkiroProvider
 
 
@@ -19,6 +20,9 @@ def build_provider(config: Config) -> AIProvider:
         return XkiroProvider(config)
     if name == "groq":
         return GroqProvider(config)
+    if name == "ollama":
+        return OllamaProvider(config)
     raise ValueError(
-        f"AI_PROVIDER={config.ai_provider!r} no válido. Usa 'groq' o 'xkiro'."
+        f"AI_PROVIDER={config.ai_provider!r} no válido. Usa 'groq', 'xkiro' "
+        f"u 'ollama'."
     )

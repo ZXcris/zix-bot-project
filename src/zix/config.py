@@ -29,6 +29,14 @@ def _float_env(name: str, default: float) -> float:
         return default
 
 
+def _bool_env(name: str, default: bool) -> bool:
+    """Lee un booleano de entorno. '1', 'true', 'yes' y 'on' son True."""
+    crudo = os.getenv(name)
+    if crudo is None:
+        return default
+    return crudo.strip().lower() in ("1", "true", "yes", "on", "si", "sí")
+
+
 def project_path(value: str) -> Path:
     """Resuelve una ruta de configuración; las relativas apuntan a la raíz."""
     path = Path(value)
@@ -40,7 +48,8 @@ class Config:
     """Configuración de ZIX. Los valores provienen de variables de entorno (.env)."""
 
     # --- Proveedor de IA (v0.3) ---
-    # "groq" (defecto) o "xkiro" (gateway OpenAI-compatible con modelos gratis).
+    # "groq" (defecto), "xkiro" (gateway OpenAI-compatible con modelos
+    # gratis) o "ollama" (modelo local, sin cuota ni internet).
     ai_provider: str = "groq"
     groq_api_key: str = ""
     # --- xKiro (v0.3, gateway OpenAI-compatible https://api.xkiro.com/v1) ---
@@ -49,9 +58,45 @@ class Config:
     xkiro_fallback_model: str = "minimax/minimax-m3:free"
     xkiro_base_url: str = "https://api.xkiro.com/v1"
     xkiro_timeout_seconds: float = 30.0
+    # --- Ollama (modelo local; endpoint OpenAI-compatible en el mismo PC) ---
+    ollama_base_url: str = "http://127.0.0.1:11434/v1"
+    # El modelo por defecto es el UNICO de los tres locales que emite
+    # tool calls de verdad (verificado el 2026-10-20):
+    #   openbmb/minicpm-v4.6 -> SI
+    #   phi4-mini             -> NO, ignora las tools y responde en texto
+    #   qwen2.5-coder:1.5b    -> NO, devuelve el JSON como texto
+    # El agente de ZIX necesita las tools para poder hacer cosas, asi que
+    # cambiar este modelo sin comprobarlo deja a ZIX hablando pero sin
+    # actuar.
+    ollama_model: str = "openbmb/minicpm-v4.6:latest"
+    # En CPU el primer token tarda: el modelo pesa 1,5 GB y hay que
+    # cargarlo en RAM. 300 s deja margen para esa primera vez.
+    #
+    # Este es un PLAZO TOTAL, no un timeout de socket: se comprueba el
+    # reloj entre lecturas. Sin eso, un servidor lento puede retener la
+    # llamada todo lo que quiera (medido: 20 s con un plazo de 2 s), y
+    # como el pipeline de voz es sincrono, ZIX se queda sin microfono.
+    ollama_timeout_seconds: float = 300.0
+    # Permitir que OLLAMA_BASE_URL apunte fuera de este equipo. Por
+    # defecto NO: la conversacion (y la transcripcion de tu voz) se
+    # enviarian a un host remoto en claro.
+    ollama_allow_remote: bool = False
+    # Tope de la respuesta del servidor. 8 MB de sobra para un chat.
+    ollama_max_response_bytes: int = 8 * 1024 * 1024
+    # Tope de tool calls por respuesta: el agente las ejecuta TODAS.
+    ollama_max_tool_calls: int = 32
     groq_model: str = "qwen/qwen3.6-27b"
     groq_fallback_model: str = "openai/gpt-oss-20b"
     max_agent_iterations: int = 10
+    # Presupuesto de tiempo de un turno completo (todas las iteraciones).
+    # El plazo de Ollama es por llamada; con 10 iteraciones, 10 plazos
+    # seguidos son 50 minutos de microfono apagado. Este tope acota el
+    # turno entero.
+    max_turn_seconds: float = 120.0
+    # Tope de mensajes que el agente conserva en el historial. Sin esto,
+    # el historial crece sin limite (reset_session() no se llama nunca) y
+    # se reenvia entero al modelo en cada turno.
+    max_history_messages: int = 40
     groq_timeout_seconds: float = 30.0
     log_level: str = "INFO"
 
@@ -132,11 +177,27 @@ class Config:
                 "XKIRO_BASE_URL", "https://api.xkiro.com/v1"
             ).strip(),
             xkiro_timeout_seconds=_float_env("XKIRO_TIMEOUT_SECONDS", 30.0),
+            ollama_base_url=os.getenv(
+                "OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1"
+            ).strip(),
+            ollama_model=os.getenv(
+                "OLLAMA_MODEL", "openbmb/minicpm-v4.6:latest"
+            ).strip(),
+            ollama_timeout_seconds=_float_env("OLLAMA_TIMEOUT_SECONDS", 300.0),
+            ollama_allow_remote=_bool_env("OLLAMA_ALLOW_REMOTE", False),
+            ollama_max_response_bytes=_int_env(
+                "OLLAMA_MAX_RESPONSE_BYTES", 8 * 1024 * 1024),
+            ollama_max_tool_calls=_int_env("OLLAMA_MAX_TOOL_CALLS", 32),
+            # Tope de mensajes que el agente conserva. Sin esto, el
+            # historial crece sin limite (reset_session() no se llama
+            # nunca) y se reenvia entero al modelo en cada turno.
+            max_history_messages=_int_env("MAX_HISTORY_MESSAGES", 40),
             groq_model=os.getenv("GROQ_MODEL", "qwen/qwen3.6-27b").strip(),
             groq_fallback_model=os.getenv(
                 "GROQ_FALLBACK_MODEL", "openai/gpt-oss-20b"
             ).strip(),
             max_agent_iterations=_int_env("MAX_AGENT_ITERATIONS", 10),
+            max_turn_seconds=_float_env("MAX_TURN_SECONDS", 120.0),
             groq_timeout_seconds=_float_env("GROQ_TIMEOUT_SECONDS", 30.0),
             log_level=os.getenv("LOG_LEVEL", "INFO").strip(),
             voice_sample_rate=_int_env("VOICE_SAMPLE_RATE", 16000),
