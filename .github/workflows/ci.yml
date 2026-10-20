@@ -203,16 +203,19 @@ jobs:
           #   urllib3 2.7.0 (PYSEC-2026-4175/4176/4177) -> 2.8.0
           #   pypdf   6.18.0 (PYSEC-2026-4154/4155/4156/4157/4159/4160) -> 6.19.0
           #
-          # --require-hashes porque el lock lleva hashes: asi tambien se
-          # comprueba que el fichero de hecho los lleva.
+          # --no-deps, y SIN --require-hashes: el lock ya lista TODAS las
+          # dependencias, incluidas las transitivas, asi que no hace falta
+          # resolver nada. Sin esta opcion, pip-audit crea un venv e intenta
+          # instalar el lock, y en Linux eso falla: openwakeword 0.6.0 exige
+          # tflite-runtime, que no tiene wheel para cp312 en Linux.
           #
-          # --no-deps: el lock ya lista TODAS las dependencias, incluidas
-          # las transitivas, asi que no hace falta resolver nada. Sin esta
-          # opcion, pip-audit crea un venv e intenta instalar el lock, y en
-          # Linux eso falla: openwakeword 0.6.0 exige tflite-runtime, que no
-          # tiene wheel para cp312 en Linux. Con --no-deps se audita la lista
-          # tal cual, que es justo lo que queremos: lo que se instala.
-          python -m pip_audit -r requirements.lock --no-deps --require-hashes --strict --progress-spinner off
+          # Comprobado que sigue detectando: con el lock anterior (9 CVEs)
+          # devuelve 'Found 9 known vulnerabilities' y sale con codigo 1.
+          #
+          # Los hashes los valida otro job: 'reproducibilidad' hace
+          # 'pip install --require-hashes', que comprueba el hash de cada
+          # fichero descargado. Aqui solo se miran las vulnerabilidades.
+          python -m pip_audit -r requirements.lock --no-deps --strict --progress-spinner off
 
       - name: Auditar lo declarado sin fijar (aviso temprano)
         run: |
