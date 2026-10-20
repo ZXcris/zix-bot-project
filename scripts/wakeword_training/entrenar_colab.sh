@@ -412,6 +412,67 @@ PYEOF
 ZIX_REAL_COPIAS="${ZIX_REAL_COPIAS:-100}" "$PY" /content/inject_real.py || die "inyeccion de clips reales fallo"
 echo "POSITIVOS_TOTAL=$(ls /content/zix_model/zix/positive_train/*.wav 2>/dev/null | wc -l)"
 
+step "17b. COMPUERTA PRE-ENTRENAMIENTO (falla aqui, no en 40 minutos)"
+# ---------------------------------------------------------------------------
+# POR QUE: en septiembre la corrida completo hasta el final y solo entonces se
+# vio que el modelo no servia. Si la voz real no llega a positive_train, o el
+# retenido no existe, no hay nada que verificar despues. Se para ANTES de
+# augment (~10 min) y train (~30-60 min).
+# EQUIVALE a validar_preflight.py [3][4][6], que corre en local.
+# ---------------------------------------------------------------------------
+cat > /content/gate_pre.py <<'PYEOF'
+import sys, yaml
+from pathlib import Path
+
+RAIZ = Path('/content')
+POS  = RAIZ/'zix_model/zix/positive_train'
+NEG  = RAIZ/'zix_model/zix/negative_train'
+HELD = RAIZ/'zix_real_heldout'
+cfg  = yaml.safe_load(open('/content/my_model.yaml'))
+errores, avisos = [], []
+
+# 1) la frase objetivo NO puede ser negativa
+objetivo = {t.lower().strip() for t in cfg.get('negative_phrases', [])} \
+         | {t.lower().strip() for t in cfg.get('custom_negative_phrases', [])}
+malos = objetivo & {t.lower().strip() for t in cfg.get('target_phrase', [])}
+if malos:
+    errores.append(f'la frase objetivo {malos} esta en las frases negativas')
+
+# 2) la voz real tiene que estar EN LA CARPETA QUE LEE train.py
+reales = list(POS.glob('real_*_c*.wav')) if POS.is_dir() else []
+todos  = list(POS.glob('*.wav'))       if POS.is_dir() else []
+if not reales:
+    errores.append(f'0 clips reales en {POS}: train.py no los leera')
+elif not todos:
+    errores.append(f'{POS} esta vacia')
+else:
+    pct = 100*len(reales)/len(todos)
+    if pct < 5:
+        avisos.append(f'la voz real es solo {pct:.1f}% de los positivos: sube ZIX_REAL_COPIAS')
+
+# 3) sin retenidos no hay verificacion honesta posible
+retenidos = list(HELD.glob('*.wav')) if HELD.is_dir() else []
+if not retenidos:
+    errores.append(f'{HELD} vacio: sin clips retenidos no podras verificar el modelo')
+
+# 4) fuga: ningun retenido puede estar tambien en entrenamiento
+tren = {p.name for p in POS.glob('*.wav')} if POS.is_dir() else set()
+fuga = tren & {p.name for p in retenidos}
+if fuga:
+    errores.append(f'FUGA: {sorted(fuga)[:5]} estan en entrenamiento y en retenidos')
+
+print(f'  positivos={len(todos)} reales={len(reales)} retenidos={len(retenidos)}')
+for a in avisos:  print(f'  [aviso]   {a}')
+for e in errores: print(f'  [CRITICO] {e}')
+sys.exit(1 if errores else (2 if avisos else 0))
+PYEOF
+"$PY" /content/gate_pre.py; GATE=$?
+# 0 = todo bien, 2 = avisos, 1 = critico. Solo el 1 detiene la corrida.
+if [ "$GATE" -eq 1 ]; then
+  die "COMPUERTA PRE: no se va a gastar GPU con estos datos (ver [CRITICO] arriba)"
+fi
+[ "$GATE" -eq 2 ] && say "COMPUERTA PRE: avisos, se continua"
+
 step "18. augment (LENTO ~10 min)"
 # --overwrite regenera el directorio: sin esto el n_total de train.py cuenta
 # ficheros de una ejecucion parcial anterior y el generador se agota antes
@@ -425,7 +486,117 @@ step "19. ENTRENAR (LENTO ~30-60 min)"
 MPLBACKEND=Agg "$PY" openwakeword/openwakeword/train.py --training_config my_model.yaml \
   --train_model --overwrite || die "train_model fallo (manda el traceback)"
 
-step "20. resultado"
+step "19b. COMPUERTA POST-ENTRENAMIENTO (el modelo sirve de verdad?)"
+# ---------------------------------------------------------------------------
+# POR QUE: train_model termina con exito codigo 0 aunque el modelo sea
+# inutil. El de septiembreacia asi: recall 3/27 con umbral 0.5. Esta compuerta
+# lo mide con el retenido (nunca visto) y con negativos reales, y RECHAZA la
+# corrida antes de empaquetar un modelo que no funciona.
+# UMBRAL y criterios NO son arbitrarios: recall@0.5 y FAR@0.5 sobre el
+# retenido, que es la unica medida honesta disponible.
+# ---------------------------------------------------------------------------
+cat > /content/gate_post.py <<'PYEOF'
+import sys
+from pathlib import Path
+import numpy as np, scipy.io.wavfile as wav
+from openwakeword.model import Model
+
+MODELO = '/content/zix_model/zix_model/zix.onnx'
+HELD   = Path('/content/zix_real_heldout')
+NEGDIR = Path('/content/zix_model/zix/negative_test')
+UMBRAL, B = 0.5, 1280
+
+if not Path(MODELO).is_file():
+    print(f'  [CRITICO] no se exporto {MODELO}'); sys.exit(1)
+
+m = Model(wakeword_models=[MODELO], inference_framework='onnx')
+k = [x for x in m.models if 'zix' in x][0]
+
+def leer(p):
+    sr, d = wav.read(str(p)); x = d.astype(np.float32)
+    if x.ndim > 1: x = x.mean(axis=1)
+    if sr != 16000:
+        from scipy import signal
+        x = signal.resample(x, int(len(x)*16000/sr))
+    return (np.clip(x, -1, 1)*32767).astype(np.int16)
+
+def maxs(a):
+    return max(float(m.predict(a[i:i+B])[k]) for i in range(0, len(a)-B+1, B))
+
+pos = [maxs(leer(p)) for p in sorted(HELD.glob('*.wav'))] if HELD.is_dir() else []
+neg = [maxs(leer(p)) for p in sorted(NEGDIR.glob('*.wav'))[:2000]] if NEGDIR.is_dir() else []
+
+print(f'  retenidos n={len(pos)}  max={max(pos) if pos else 0:.4f}  media={np.mean(pos) if pos else 0:.4f}')
+print(f'  negativos n={len(neg)}  max={max(neg) if neg else 0:.4f}')
+recall = sum(1 for s in pos if s >= UMBRAL)/len(pos) if pos else 0.0
+far    = sum(1 for s in neg if s >= UMBRAL)/len(neg) if neg else None
+
+errores = []
+if not pos:
+    errores.append('no hay retenidos que evaluar')
+elif recall < 0.5:
+    errores.append(f'recall@{UMBRAL} = {recall:.0%} sobre el retenido: el modelo '
+                   f'no reconoce la frase que debe despertar')
+if far is not None and far > 0.02:
+    errores.append(f'FAR@{UMBRAL} = {far:.2%}: se dispararia continuamente')
+for e in errores: print(f'  [CRITICO] {e}')
+if not errores: print('  [ok] el modelo pasa la puerta: recall y FAR aceptables')
+sys.exit(1 if errores else 0)
+PYEOF
+"$PY" /content/gate_post.py 2>&1 | tee /content/gate_post.log
+if [ "${PIPESTATUS[0]}" -eq 1 ]; then
+  say "COMPUERTA POST FALLIDA: se empaqueta igual para no perderlo, pero NO lo instales en ZIX sin reentrenar"
+fi
+cp -f /content/gate_pre.py /content/gate_post.py /content/zix_artifacts_* 2>/dev/null || true
+
+step "20. resultado + descarga verificable de artefactos"
+# ---------------------------------------------------------------------------
+# DEFECTO CORREGIDO: antes esto solo listaba los ficheros. Al caducar la
+# sesion de Colab se perdia TODO el entrenamiento. Ahora se empaqueta y se
+# descarga, y se verifica la integridad de cada artefacto.
+# ---------------------------------------------------------------------------
 find /content/zix_model -name '*.onnx*' -o -name '*.tflite' | head -20
 ls -lh /content/zix_model/zix_model/ 2>/dev/null
+
+STAMP=$(date +%Y%m%d_%H%M%S)
+OUTDIR=/content/zix_artifacts_$STAMP
+mkdir -p "$OUTDIR"
+
+# 1) modelo final (el que se baja y se usa)
+for f in /content/zix_model/zix_model/*.onnx; do
+  [ -e "$f" ] || continue
+  cp "$f" "$OUTDIR/"
+done
+# 2) retenidos: SIN esto no hay validacion honesta posible
+if [ -d /content/zix_real_heldout ]; then
+  cp -r /content/zix_real_heldout "$OUTDIR/"
+fi
+# 3) negativos generados (trazabilidad de los datos)
+if [ -d /content/zix_model/zix/negative_train ]; then
+  tar -czf "$OUTDIR/negative_train.tar.gz" -C /content/zix_model/zix negative_train
+fi
+# 4) config y log de la corrida
+cp /content/my_model.yaml "$OUTDIR/" 2>/dev/null || true
+cp /content/zix_run.log "$OUTDIR/" 2>/dev/null || true
+
+# 5) manifiesto con SHA256 de cada artefacto -> la descarga se puede verificar
+( cd "$OUTDIR" && find . -type f ! -name MANIFESTO_SHA256.txt -print0 \
+    | sort -z | xargs -0 sha256sum > MANIFESTO_SHA256.txt )
+echo "--- MANIFESTO_SHA256 ---"
+cat "$OUTDIR/MANIFESTO_SHA256.txt"
+echo "----------------------"
+
+tar -czf /content/zix_artifacts.tar.gz -C "$OUTDIR" .
+ls -lh /content/zix_artifacts.tar.gz
+
+# 6) descarga automatica. Si falla, el tar queda en /content para recuperarlo
+#    a mano antes de que caduque la sesion.
+if command -v gdown >/dev/null 2>&1; then
+  gdown --no-cookies "/content/zix_artifacts.tar.gz" 2>/dev/null \
+    || say "AVISO: gdown no pudo descargar; baja /content/zix_artifacts.tar.gz a mano"
+else
+  say "AVISO: gdown no instalado. Baja /content/zix_artifacts.tar.gz a mano ANTES de que caduque la sesion"
+fi
+
 say "PIPELINE COMPLETO"
+say "ARTEFACTOS en: $OUTDIR  y  /content/zix_artifacts.tar.gz"

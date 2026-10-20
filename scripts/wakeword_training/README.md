@@ -5,6 +5,28 @@ pipeline **oficial de openWakeWord**, y obtener **`zix.onnx`** para ZIX.
 
 > `hey_jarvis_v0.1.onnx` **no se reemplaza**: queda como respaldo mientras tanto.
 
+## Estado real del modelo actual (medido 2026-10-14, no estimado)
+
+`models/wakeword/zix.onnx` **no sirve**. Medido con el `OpenWakeWordProvider` real
+sobre los 27 clips propios y 48 grabaciones de `runtime/`:
+
+| Conjunto | n | score máx | media |
+|---|---|---|---|
+| Retenidos (nunca vistos por el modelo) | 4 | **0.0017** | 0.0012 |
+| Entrenamiento (sí vistos) | 23 | 0.2075 | 0.0222 |
+| Negativos (`runtime/`) | 48 | 0.0133 | 0.0018 |
+
+El retenido es indistinguible de los negativos, así que **ningún umbral separa
+la frase del ruido**: no es un problema de calibración, hay que reentrenar.
+El 0.2075 puntual es una instancia memorizada, no reconocimiento.
+
+No es un modelo degenerado: la red responde con rango completo (logits de −6 a
++3) y los pesos se movieron del inicializador. Aprendió, pero aprendió a
+**rechazar la voz humana**: lo que el modelo sí aprendió bien fue la voz sintética de Piper.
+
+Por eso la corrida **debe pasar las compuertas** de este documento. Antes,
+`train_model` terminaba con código 0 y el modelo se daba por bueno.
+
 ## Procedimiento (Colab)
 
 1. Abre <https://colab.research.google.com> y sube el notebook
@@ -20,7 +42,7 @@ pipeline **oficial de openWakeWord**, y obtener **`zix.onnx`** para ZIX.
    | 2. Descarga de datos | RIRs MIT, AudioSet (1 tar) + FMA (1 h), features negativos (~2 GB) | ~20-30 min |
    | 3. Configuración | Escribe `my_model.yaml` con frase **"hey zix"** y `model_name: zix` | instantáneo |
    | 4. Generar clips | Sintetiza ~5000 muestras de "Hey ZIX" + adversariales con Piper TTS | ~30-45 min |
-   | 4b. Audios reales (opcional) | Mezcla tus WAV 16k mono en `zix_model/positive/` (ver `data/wakeword_real/README.md` + `prepare_real_clips.py`) | ~5 min |
+   | 4b. Audios reales (opcional) | Mezcla tus WAV 16k mono en `zix_model/zix/positive_train/` (**con guion bajo y subcarpeta del modelo**: es la única ruta que lee `train.py`; ver `data/wakeword_real/README.md` + `prepare_real_clips.py`) | ~5 min |
    | 5. Aumentar clips | Mezcla con ruido/reverberación | ~10 min |
    | 6. Entrenar | Entrena la DNN y exporta `zix.onnx` (+ `zix.tflite`) | ~30-60 min |
    | 7. Verificar | Carga `zix.onnx` y compara scores positivos vs. negativos | instantáneo |
@@ -164,11 +186,35 @@ augment → entrenamiento. Cada paso comprueba si ya está hecho y se salta.
 
 | Fichero | Para qué |
 |---|---|
-| `entrenar_colab.sh` | El pipeline entero, 20 pasos |
+| `entrenar_colab.sh` | El pipeline entero, 20 pasos + compuertas |
+| `validar_preflight.py` | **Comprobaciones antes y después de entrenar** (rutas, frases objetivo, clips, fuga, peso de la voz real, recall del modelo) |
 | `generar_negativos.py` | Negativos duros: confusables × 4 voces × 5 ritmos, mezclados con ESC-50 a SNR 0-12 dB |
 | `patch_adversarial.py` | Parchea `data.py` para no depender de DeepPhonemizer |
-| `inyectar_clips_reales.py` | Mete tus 27 clips con sobremuestreo ×100 y aparta el 15% como retenido |
+| `inyectar_clips_reales.py` | Mete tus 27 clips con sobremuestreo ×100 en `positive_train` y aparta el 15% como retenido. **Devuelve 1 si algo falta** |
 | `check_adversarial.py` | Comprueba que el parche no dejó la frase exacta entre las negativas |
+
+### Compuertas: por qué la corrida puede parar
+
+Un entrenamiento en Colab cuesta 40-90 min de GPU. Descubrir al final que el
+modelo no sirve significa ese tiempo perdido. Hay dos compuertas:
+
+| Compuerta | Cuándo | Qué corta la corrida |
+|---|---|---|
+| `gate_pre.py` (paso 17b) | **antes** de augment y de entrenar | La frase objetivo aparece como negativa; 0 clips reales en `positive_train`; la voz real es <5% de los positivos; retenidos vacíos; fuga retenido↔entrenamiento |
+| `gate_post.py` (paso 19b) | **después** de entrenar, antes de empaquetar | `recall@0.5 < 50%` sobre los retenidos, o `FAR@0.5 > 2%` sobre los negativos |
+
+`gate_post` **no borra el artefacto**: lo empaqueta igualmente (no se pierde
+el trabajo) pero deja claro en el log que no debe instalarse en ZIX.
+
+Equivalente local: `validar_preflight.py` (paso previo) y el mismo script en
+modo post contra el `.onnx` exportado:
+
+```
+.venv\Scripts\python.exe scripts\wakeword_training\validar_preflight.py --raiz . ^
+    --modelo models\wakeword\zix.onnx --modo post
+```
+
+Códigos: `0` correcto · `1` crítico, no entrenar / no instalar · `2` avisos.
 
 ### Por qué ×100 y no solo "añadirlos"
 
