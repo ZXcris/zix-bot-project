@@ -121,7 +121,7 @@ jobs:
       # importa; aqui queda entero y se descarga desde la ejecucion.
       - name: Subir el informe de los tests
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pytest-${{ matrix.os }}
           path: pytest-${{ matrix.os }}.txt
@@ -340,7 +340,7 @@ jobs:
 
       - name: Subir el informe de los tests
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pytest-lock-${{ matrix.os }}
           path: pytest-lock-${{ matrix.os }}.txt
