@@ -60,6 +60,10 @@ jobs:
         run: python scripts/setup_openwakeword_models.py
 
       - name: Comprobar los modelos de openWakeWord
+        # shell: bash explicito. Sin esto, en Windows este paso corre bajo
+        # PowerShell y la sintaxis de bash da ParserError: el job se pone
+        # rojo por un script que en realidad no llego a ejecutarse.
+        shell: bash
         # El paso anterior puede fallar solo por la red. Aqui se mira el
         # resultado y se dice con nombre y apellidos, en vez de dejar que
         # los tests se omitan sin que quede constancia.
@@ -154,7 +158,24 @@ jobs:
 
   dependencias:
     name: CVEs conocidas
-    runs-on: ubuntu-latest
+    # Este job corre en WINDOWS a proposito, y por un motivo concreto que
+    # solo se ve mirando el log de pip-audit:
+    #
+    # pip-audit resuelve el fichero de requisitos antes de auditarlo, con
+    # 'pip install --dry-run -r <fichero>' y SIN --no-deps (esa opcion solo
+    # decide que paquetes se auditan, no si se resuelve). Al resolver en
+    # Linux, openwakeword 0.6.0 arrastra 'tflite-runtime;
+    # platform_system == "Linux"', que no tiene wheel para cp312 en Linux
+    # (0 de sus 9 versiones en PyPI). El lock, al fijar versiones, no
+    # deja que pip retroceda a openwakeword 0.4.0 como sí hace con la
+    # instalacion flotante, y la resolucion falla.
+    #
+    # En Windows el mismo lock se instala bien (comprobado: 38 s de
+    # instalacion real en un venv limpio), asi que aqui se audita.
+    #
+    # Los dos ficheros declarados (requirements.txt y requirements-dev.txt)
+    # no dependen de la plataforma, asi que auditarlos aqui es igual.
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
 
@@ -199,9 +220,19 @@ jobs:
           #   urllib3 2.7.0 (PYSEC-2026-4175/4176/4177) -> 2.8.0
           #   pypdf   6.18.0 (PYSEC-2026-4154/4155/4156/4157/4159/4160) -> 6.19.0
           #
-          # --require-hashes porque el lock lleva hashes: asi tambien se
-          # comprueba que el fichero de hecho los lleva.
-          python -m pip_audit -r requirements.lock --require-hashes --strict --progress-spinner off
+          # --no-deps, y SIN --require-hashes: el lock ya lista TODAS las
+          # dependencias, incluidas las transitivas, asi que no hace falta
+          # resolver nada. Sin esta opcion, pip-audit crea un venv e intenta
+          # instalar el lock, y en Linux eso falla: openwakeword 0.6.0 exige
+          # tflite-runtime, que no tiene wheel para cp312 en Linux.
+          #
+          # Comprobado que sigue detectando: con el lock anterior (9 CVEs)
+          # devuelve 'Found 9 known vulnerabilities' y sale con codigo 1.
+          #
+          # Los hashes los valida otro job: 'reproducibilidad' hace
+          # 'pip install --require-hashes', que comprueba el hash de cada
+          # fichero descargado. Aqui solo se miran las vulnerabilidades.
+          python -m pip_audit -r requirements.lock --no-deps --strict --progress-spinner off
 
       - name: Auditar lo declarado sin fijar (aviso temprano)
         run: |
@@ -218,26 +249,26 @@ jobs:
 
   reproducibilidad:
     name: Entorno reproducible (lock)
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-latest]
+    # SOLO Windows, y no por capricho: requirements.lock es el entorno de
+    # WINDOWS, y no se puede reproducir en Linux.
+    #
+    # openwakeword==0.6.0 exige 'tflite-runtime; platform_system == "Linux"'
+    # y tflite-runtime no publica ninguna wheel para cp312 en Linux (comprobado
+    # en PyPI: 0 de sus 9 versiones la tienen). Con el lock fijado, pip no
+    # puede retroceder a otra version de openwakeword, y la instalacion
+    # falla. Sin fijar (lo que hace el job 'pruebas'), pip retrocede solo a
+    # openwakeword 0.4.0, que si instala.
+    #
+    # Asi que la situacion real es: el lock reproduce WINDOWS, que es la
+    # plataforma objetivo del proyecto (ver README), y Linux se comprueba
+    # como prueba de portabilidad con la instalacion flotante.
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-
-      # Mismo motivo que en el job de pruebas: en Linux el wheel de
-      # sounddevice instala, pero al importar necesita PortAudio, que el
-      # runner no trae.
-      - name: PortAudio (solo Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq portaudio19-dev libsndfile1
 
       - name: Comprobar que el lock y lo declarado no se han separado
         run: |
@@ -262,6 +293,10 @@ jobs:
         run: python scripts/setup_openwakeword_models.py
 
       - name: Comprobar los modelos de openWakeWord
+        # shell: bash explicito, por el mismo motivo que en el job de
+        # pruebas: sin esto, en Windows este paso corre bajo PowerShell y la
+        # sintaxis de bash da ParserError.
+        shell: bash
         # Mismo criterio que en el job de pruebas: si la descarga falla, se
         # dice explicitamente que los tests afectados se OMITEN, en vez de
         # dejar el fallo escondido detras de un continue-on-error.

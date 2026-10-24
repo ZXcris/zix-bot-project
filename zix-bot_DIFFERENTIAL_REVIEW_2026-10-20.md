@@ -73,6 +73,46 @@ modelo ya estaban limitadas de antemano y ese trabajo **no se ha tocado**
 
 ---
 
+## 1.c Corrección a una afirmación de este informe (el CI la refutó)
+
+Este informe decía que el lock «resuelve en 4 plataformas: Win cp312/cp314 y
+Linux cp312/cp314». **Eso era una prueba inválida**, y el primer push lo
+demostró: la instalación real del lock **falló en Linux**.
+
+**Por qué mi prueba no valía:** usé `pip install --dry-run --platform
+manylinux_... --python-version 3.12`. Con `--platform`, pip **evalúa los
+marcadores de entorno contra la MÁQUINA ANFITRONA**, no contra la plataforma
+simulada. El lock fija `openwakeword==0.6.0`, que exige
+`tflite-runtime<3,>=2.8.0; platform_system == "Linux"`. Al estar en Windows,
+ese marcador se evaluaba como falso y **el requisito se saltaba en silencio**.
+Mi «OK» no probaba nada sobre Linux.
+
+**El hecho real:** `tflite-runtime` **no publica ninguna wheel para cp312 en
+Linux** (comprobado en PyPI: 0 de sus 9 versiones 2.5–2.14 la tienen). Como el
+lock fija la versión, pip no puede retroceder, y la instalación falla. En
+cambio, con instalación flotante (`pip install -e ".[dev]"`, lo que hace el job
+`pruebas`), pip **retrocede solo a `openwakeword 0.4.0`**, que sí instala.
+
+**Consecuencias reales, y una que no esperaba:**
+
+1. **`requirements.lock` es el entorno de WINDOWS**, que es la plataforma
+   objetivo del proyecto (README: «Windows 10/11»). Se documenta así en el
+   workflow y el job `reproducibilidad` pasa a ser solo Windows.
+2. **El CI de Linux llevaba tiempo probando `openwakeword 0.4.0`, no la 0.6.0**
+   que usa ZIX. No lo había detectado nadie porque el retroceso de pip es
+   silencioso. Queda documentado, pero **arreglarlo (un lock por plataforma)
+   es un cambio de estrategia que no se hace aquí**.
+
+**Correcciones aplicadas tras este hallazgo:**
+
+| Problema | Corrección |
+|---|---|
+| El job de CVEs fallaba en Linux (pip-audit resuelve el lock) | Auditoría del lock con `--no-deps`: el lock ya lista todas las dependencias, no hace falta resolver nada. Es además **más exacto**: se audita lo que se instala |
+| El job `reproducibilidad` fallaba en Linux | Scoped a Windows, con el motivo documentado en el propio workflow |
+| `Comprobar los modelos de openWakeWord` daba `ParserError` en Windows | El paso usaba sintaxis de bash bajo PowerShell. Ahora lleva `shell: bash` |
+
+---
+
 ## 2. What Changed
 
 **Commits:** 0 (todo sin commitear, por instrucción explícita)

@@ -111,6 +111,35 @@ Tú: Abre Chrome.
 ZIX: Abierta: chrome.
 ```
 
+## Grabar tu voz para el wake word (Hey ZIX)
+
+El wake word es lo único que **no se puede descargar**: hay que grabarlo.
+El grabador te guía: te dice qué condición falta, pulsas Enter, dices «Hey ZIX»
+y **valida el clip solo** (duración, nivel, saturación y que haya voz
+detectada con el VAD de Silero). Lo que grabes mal te lo pide otra vez.
+
+```powershell
+python scripts/wakeword_training/grabar_clips.py --persona <tu-etiqueta>
+```
+
+| Opción | Para qué |
+|---|---|
+| `--persona` | Tu etiqueta en el nombre del fichero (`heyzix_<persona>_...`). Usa la que quieras: identifica al hablante, no se publica |
+| `--destino` | Dónde se guardan (por defecto `data/wakeword_real/`) |
+| `--segundos` | Duración de cada clip (por defecto 3 s) |
+| `--objetivo` | Clips por condición (por defecto 3) |
+| `--dispositivo` | Si hay varios micros,substring del nombre |
+
+**La matriz que cubre** (3 sitios × 3 distancias × 3 fondos): cuarto
+silencioso, cocina con eco y ventana con tráfico de calle; y de cerca
+(~0,5 m), medio (1-2 m) y lejos (3-5 m). Con `--objetivo 3` son unos 27
+clips. **La variedad importa más que la cantidad**: 30 clips bien repartidos
+valen más que 100 en el mismo sitio.
+
+**Privacidad:** la voz es un dato biométrico. Los clips se quedan en tu
+equipo (`data/wakeword_real/` está en `.gitignore` y nunca se versionan).
+Solo se subirían a Colab para entrenar, y solo si tú lo decides.
+
 ## Tests
 
 ```powershell
