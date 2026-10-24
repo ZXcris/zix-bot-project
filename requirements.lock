@@ -49,6 +49,20 @@
 #
 # Volvio a pasar 'pip-audit -r requirements.lock --require-hashes' con 0.
 #
+# Actualizado el 2026-10-24:
+#
+#   playwright 1.63.0 -> 1.64.1: Dependabot abrio el PR #5 para subir lo
+#       declarado (requirements-dev.txt, '>=1.63.0' -> '>=1.64.0'). Se
+#       actualiza aqui en el MISMO cambio que el lock: si se mezclara el
+#       PR solo, lo declarado pediria >=1.64.0 y el lock seguiria fijando
+#       1.63.0, que es exactamente la deriva silenciosa que este fichero
+#       existe para impedir (ver 'playwright 1.62.0 -> 1.63.0' arriba).
+#       greenlet 3.5.5 y pyee 13.0.1 siguen dentro de los rangos que pide
+#       la 1.64.1 (greenlet>=3.1.1,<4 ; pyee>=13,<15): no hay cambios
+#       transitivos. Los 8 hashes son los sha256 que PyPI publica para
+#       TODOS los wheels de la 1.64.1 (win32, win_amd64, win_arm64,
+#       macos x86_64/arm64/universal2 y manylinux x86_64/aarch64).
+#
 # 'zix' no aparece: es el propio paquete, se instala con 'pip install -e .'.
 # 'pip-audit' tampoco: es la herramienta que audita este fichero, no parte
 # del entorno que audita. Se instala aparte: pip install "pip-audit>=2.10.1"
@@ -570,15 +584,15 @@ piper-tts==1.7.0 \
     --hash=sha256:a2af3dae98e1835a3b1da37e4aa290e6adf41165c7d768e1ce73d9246f867d2c \
     --hash=sha256:b01504ae404631005a88d72d2a5792adff29ccea6c84f20601f7fefcfc5574de \
     --hash=sha256:b43b2d299556bd6e87bcb6932fe853f8f89d65d7ad85cc372c89777ad2035d8f
-playwright==1.63.0 \
-    --hash=sha256:1e4a3a838ce22fb68ad17193fcd142a19610d9d70fb9966d2239f5dddc0cc05b \
-    --hash=sha256:2f9a707a6c6c91157ed77bff2b8caeb04b3c8d46e70d585fc134298cbe4b5cc6 \
-    --hash=sha256:354e15b29503565fc598b89f16fbe070459343bef9d7498a93e304864000c6a7 \
-    --hash=sha256:660c00c62639e31b16700ba5456b351ddba55bb766b7ce8261223aa34928e482 \
-    --hash=sha256:84c540759e8e7f01e690e197e04060f48899d37cea322299f255843273d3385d \
-    --hash=sha256:ad21bc07516b187965a7521c5cf0df0bd657b17482eaad74335272d35a2b07de \
-    --hash=sha256:c89fc4736502a1f0fac2c8ca5d10c0cbc1c669f1f4774a2d8507a43140e4d53f \
-    --hash=sha256:fd1aa00631d44d55e56e0975bf3f3f285fac4a9fd2813183f0c12a488f1a1b24
+playwright==1.64.1 \
+    --hash=sha256:29453ff76e25c17d0b45658cacd6b92e9eec46e8db21e134fb3b7143df50f013 \
+    --hash=sha256:59f7b041284ce8d1b72098ae50ca48a2d83692eec25154ab5ba79d4b6b4fe8a9 \
+    --hash=sha256:6a6f99adad1ae40e6ee62efe89785db861ce7ddd57651521cb31894183cc4ae3 \
+    --hash=sha256:577b8d88778c245cfbd145ae17cf53044f084b1b46c55c69081d4069d56057e2 \
+    --hash=sha256:a29fda44725e11b0b625c4bff6458a1f6dbee97b88c9788d12e18a8344458c2d \
+    --hash=sha256:d3c48b31da426c2f3562d0919cb9ea4e5415f6dbd29d7211fa4d66cca24fbd2f \
+    --hash=sha256:5e240a79464434c9260957b9ef59a5808e02e96e3fcabdc717fd7485260b9730 \
+    --hash=sha256:983ccd085453ea5a7588193657fc349a6ffbf7bf7ba663fd58dc81e4aa3af9d9
 pluggy==1.6.0 \
     --hash=sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3 \
     --hash=sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746
