@@ -4,7 +4,7 @@
 # Este fichero existe para entornos sin soporte de extras (py3.10 en Colab).
 
 # Suite de pruebas
-pytest>=9.1.1
+pytest>=9.2.0
 
 # Reescritura de historial (solo si hay que purgar un secreto del repositorio)
 git-filter-repo>=2.47
